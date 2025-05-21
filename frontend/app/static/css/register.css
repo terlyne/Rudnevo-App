@@ -1,0 +1,112 @@
+@import url(style.css);
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 128px;
+    gap: 64px;
+}
+
+.logo__mosobr {
+    height: 86px;
+}
+
+.logo__rudnevo {
+    height: 48px;
+}
+
+.register {
+    display: flex;
+    min-width: 800px;
+    height: 450px;
+    background-color: #A6A6A6;
+    border-radius: 25px;
+}
+
+.register__form {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.register-form {
+    display: flex;
+    padding: 70px 0 30px;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    gap: 15px;
+}
+
+.register-form__email {
+    height: 40px;
+    width: 440px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+
+.register-form__username {
+    height: 40px;
+    width: 440px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.register-form__password {
+    height: 40px;
+    width: 440px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.register-form__confirm-password {
+    height: 40px;
+    width: 440px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.register-form__log-in {
+    margin-top: auto;
+    width: 290px;
+    height: 60px;
+    border-radius: 20px;
+    background-color: #636363;
+    color: #FFFFFF;
+    font-weight: 500;
+    font-size: 18px;
+    transition: background-color 0.3s;
+}
+
+.register-form__log-in:hover {
+    background-color: #505050;
+}
+
+
+.register-form__change-form {
+    cursor: pointer;
+    margin-top: 10px;
+    color: #FFFFFF;
+    text-decoration: underline;
+    transition: color 0.3s;
+}
+
+.register-form__change-form:hover {
+    text-decoration: underline;
+    color: #000000;
+}

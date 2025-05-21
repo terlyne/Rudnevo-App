@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}
+Регистрация
+{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+{% endblock %}
+
+
+{% block body %}
+<div class="body">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='images/MosObr.svg') }}" alt="Московское Образовние"
+            class="logo__mosobr">
+        <img src="{{ url_for('static', filename='images/Rudnevo.svg') }}" alt="Руднево" class="logo__rudnevo">
+    </div>
+    <div class="register">
+        <div class="register__form">
+            <!-- Форма регистрации -->
+            <form class="register-form" id="auth-form" method="post" action="#">
+                <input class="register-form__email" id="register-form__email-input" type="text"
+                    placeholder="Электронная почта" required>
+                <input class="register-form__username" id="auth-form__username-input" type="text"
+                    placeholder="Имя пользователя" required>
+                <input class="register-form__password" id="auth-form__password-input" type="password"
+                    placeholder="Пароль" required>
+                <input class="register-form__confirm-password" id="auth-form__confirm-password-input" type="password"
+                    placeholder="Подтвердите пароль" required>
+                <button type="submit" class="register-form__log-in"
+                    hx-post="{{ url_for('auth_app.register') }}">Зарегистрироваться</button>
+                <a href="{{ url_for('auth_app.login') }}" class="register-form__change-form">Войти</a>
+            </form>
+        </div>
+    </div>
+    <div class="response-message"></div>
+</div>
+<!-- Написать скрипт для отправки JSON на API -->
+{% endblock %}

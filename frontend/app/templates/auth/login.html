@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Вход{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="body">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='images/MosObr.svg') }}" alt="Московское Образовние"
+            class="logo__mosobr">
+        <img src="{{ url_for('static', filename='images/Rudnevo.svg') }}" alt="Руднево" class="logo__rudnevo">
+    </div>
+    <div class="login">
+        <div class="login__form">
+            <!-- Форма входа -->
+            <form class="login-form" id="auth-form" method="post" action="#" hx-trigger="submit"
+                hx-post="{{ url_for('auth_app.login') }}">
+                <input class="login-form__identifier" id="auth-form__identifier-input" name="auth-username" type="text"
+                    placeholder="Имя пользователя или эл. почта" required>
+                <input class="login-form__password" id="auth-form__password-input" type="password" name="auth-password"
+                    placeholder="Пароль" required>
+                <button type="submit" class="login-form__log-in">Войти</button>
+                <a href="{{ url_for('auth_app.register') }}" class="login-form__change-form">Зарегистрироваться</a>
+            </form>
+        </div>
+    </div>
+    <div class="response-message" id="response-message"></div>
+</div>
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}
