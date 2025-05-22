@@ -61,9 +61,10 @@ body {
 
 .login-form__password {
     height: 40px;
-    width: 440px;
-    padding: 10px;
+    width: 100%;
+    padding: 10px 40px 10px 10px;
     border-radius: 10px;
+    box-sizing: border-box;
 }
 
 .login-form__log-in {
@@ -94,4 +95,172 @@ body {
 .login-form__change-form:hover {
     text-decoration: underline;
     color: #000000;
+}
+
+.password-wrapper {
+    position: relative;
+    width: 440px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toggle-password:hover {
+    opacity: 0.8;
+}
+
+.eye-icon {
+    width: 20px;
+    height: 20px;
+    transition: opacity 0.2s;
+}
+
+.eye-hide {
+    margin-bottom: 1.5px;
+    margin-right: 1px;
+    display: none;
+}
+
+/* Стили для сообщений */
+.response-message {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-success {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.alert .icon {
+    font-weight: bold;
+}
+
+.alert .message {
+    flex-grow: 1;
+}
+
+/* Стили для модального сообщения */
+.modal-message-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-message-container.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-message {
+    min-width: 300px;
+    max-width: 90%;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    background: white;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-message-container.active .modal-message {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.modal-message-container.closing .modal-message {
+    transform: translateY(-20px);
+    opacity: 0;
+}
+
+/* Стили для успешного сообщения */
+.modal-success {
+    border: 1px solid #4ade80;
+}
+
+.modal-success .modal-icon {
+    background-color: #4ade80;
+}
+
+/* Стили для сообщения об ошибке */
+.modal-error {
+    border: 1px solid #f87171;
+}
+
+.modal-error .modal-icon {
+    background-color: #f87171;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.modal-icon {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    border-radius: 50%;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.modal-text {
+    margin: 0;
+    color: #666;
+    font-size: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-width: 400px;
 }

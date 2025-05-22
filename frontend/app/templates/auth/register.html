@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
 {% endblock %}
 
-
 {% block body %}
 <div class="body">
     <div class="logo">
@@ -18,22 +17,24 @@
     <div class="register">
         <div class="register__form">
             <!-- Форма регистрации -->
-            <form class="register-form" id="auth-form" method="post" action="#">
-                <input class="register-form__email" id="register-form__email-input" type="text"
+            <form class="register-form" id="auth-form" method="post" action="#" hx-trigger="submit" hx-swap="none"
+                hx-post="{{ url_for('auth_app.register') }}" hx-headers='{ "Content-Type": "application/json" }'
+                hx-ext="json-enc">
+                <input class="register-form__email" id="register-form__email-input" name="email" type="text"
                     placeholder="Электронная почта" required>
-                <input class="register-form__username" id="auth-form__username-input" type="text"
+                <input class="register-form__username" id="auth-form__username-input" name="username" type="text"
                     placeholder="Имя пользователя" required>
-                <input class="register-form__password" id="auth-form__password-input" type="password"
+                <input class="register-form__password" id="auth-form__password-input" name="password" type="password"
                     placeholder="Пароль" required>
-                <input class="register-form__confirm-password" id="auth-form__confirm-password-input" type="password"
-                    placeholder="Подтвердите пароль" required>
-                <button type="submit" class="register-form__log-in"
-                    hx-post="{{ url_for('auth_app.register') }}">Зарегистрироваться</button>
+                <input class="register-form__confirm-password" id="auth-form__confirm-password-input"
+                    name="confirm_password" type="password" placeholder="Подтвердите пароль" required>
+                <button type="submit" class="register-form__log-in">Зарегистрироваться</button>
                 <a href="{{ url_for('auth_app.login') }}" class="register-form__change-form">Войти</a>
             </form>
         </div>
     </div>
-    <div class="response-message"></div>
+    <div class="response-message" id="response-message"></div>
 </div>
-<!-- Написать скрипт для отправки JSON на API -->
+
+<script src="{{ url_for('static', filename='js/register.js') }}"></script>
 {% endblock %}
