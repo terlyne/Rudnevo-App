@@ -83,20 +83,6 @@ body {
     background-color: #505050;
 }
 
-
-.login-form__change-form {
-    cursor: pointer;
-    margin-top: 10px;
-    color: #FFFFFF;
-    text-decoration: underline;
-    transition: color 0.3s;
-}
-
-.login-form__change-form:hover {
-    text-decoration: underline;
-    color: #000000;
-}
-
 .password-wrapper {
     position: relative;
     width: 440px;

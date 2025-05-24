@@ -15,10 +15,10 @@ async def get_user_by_email_or_username(identifier: str) -> Optional[User]:
         return result.scalar_one_or_none()
 
 
-async def create_user(user_data: UserRegister) -> Optional[User]:
-    """Создание нового пользователя."""
+async def create_user(user_data: UserCreate) -> Optional[User]:
+    """Создание нового пользователя администратором."""
     async with async_session_maker() as session:
-        user = await get_user_by_email_or_username(user_data.username)
+        user = await get_user_by_email_or_username(user_data.email)
 
         if user is None:
             new_user = User(email=user_data.email, username=user_data.username)

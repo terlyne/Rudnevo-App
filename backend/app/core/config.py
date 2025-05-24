@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Соль для пароля
     PASSWORD_SALT: str
 
+    # Параметры для отправки сообщений с приглашениями на регистрацию
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
+
 
 def get_db_url():
     """Функция для получения строки подключения к БД"""

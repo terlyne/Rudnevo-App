@@ -1,14 +1,24 @@
 from pydantic import BaseModel, EmailStr, Field
 
 
-class UserRegister(BaseModel):
-    username: str = Field(
-        ..., min_length=3, max_length=255, description="Имя пользователя"
-    )
+class UserCreate(BaseModel):
+    # Схема для первичного создания пользователя администратором
     email: EmailStr = Field(
-        ..., min_length=3, max_length=255, description="Почта пользователя"
+        ..., min_length=3, description="Почта пользователя"
     )
-    password: str = Field(..., description="Пароль пользователя")
+
+class UserRegister(BaseModel):
+    # Схема для регистрации пользователя
+    email: EmailStr = Field(
+        ..., min_length=3, description="Почта пользователя"
+    )
+    username: str = Field(
+        ..., min_length=3, description="Имя пользователя"
+    )
+    password: str = Field(
+        ..., min_length=3, description="Пароль пользователя"
+    )
+    is_registered: bool = True
 
 
 class UserLogin(BaseModel):

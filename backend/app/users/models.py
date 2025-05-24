@@ -9,12 +9,15 @@ from core.config import settings
 class User(Base):
     id: Mapped[int_pk]
     email: Mapped[str_uniq] = mapped_column(
-        String(255)
-    )  # Максимальное кол-во символов email - 255
+        Text
+    )
     username: Mapped[str_uniq] = mapped_column(
-        String(255)
-    )  # Максимальное кол-во символов username - 255
-    password: Mapped[str] = mapped_column(Text, nullable=False)
+        Text
+    )
+    password: Mapped[str] = mapped_column(Text)
+    # Поле для того, чтобы установить зарегистрирован пользователь или нет (Админ добавляет пользователя, а потом пользователь регистрируется перейдя по адресу в письме отправленному ему на электроннцю почту)
+    is_registered: Mapped[bool] = mapped_column(nullable=False, server_default=False)
+
 
     def set_password(self, password: str) -> None:
         """Функция для сохранения хэшированного пароля в БД с использованием соли"""
