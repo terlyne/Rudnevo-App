@@ -27,9 +27,15 @@ class Settings(BaseSettings):
     # Соль для пароля
     PASSWORD_SALT: str
 
-    # Параметры для отправки сообщений с приглашениями на регистрацию
+    # Параметры для работы с почтой
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
+
+    # Параметры для приглашений
+    REGISTRATION_TOKEN_EXPIRE_DAYS: int
+
+    # URL фронтенда
+    FRONTEND_URL: str
 
 
 def get_db_url():

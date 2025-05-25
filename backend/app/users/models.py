@@ -1,8 +1,17 @@
-from sqlalchemy import String, Text
+from sqlalchemy import Text, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base, int_pk, str_uniq
 from werkzeug.security import generate_password_hash, check_password_hash
 from core.config import settings
+from enum import Enum
+from typing import Optional
+from datetime import datetime
+
+
+# Перечисление для роли пользователя в системе
+class UserRole(Enum):
+    SUPERADMIN = "superadmin"
+    ADMIN = "admin"
 
 
 # Модель таблицы пользователя
@@ -12,11 +21,14 @@ class User(Base):
         Text
     )
     username: Mapped[str_uniq] = mapped_column(
-        Text
+        Text, nullable=True,
     )
-    password: Mapped[str] = mapped_column(Text)
-    # Поле для того, чтобы установить зарегистрирован пользователь или нет (Админ добавляет пользователя, а потом пользователь регистрируется перейдя по адресу в письме отправленному ему на электроннцю почту)
-    is_registered: Mapped[bool] = mapped_column(nullable=False, server_default=False)
+    password: Mapped[str] = mapped_column(Text, nullable=True)
+    role: Mapped[UserRole] = mapped_column(SQLAlchemyEnum(UserRole), default=UserRole.ADMIN)
+    # Поле для того, чтобы установить зарегистрирован пользователь или нет (Админ добавляет пользователя, а потом пользователь регистрируется перейдя по адресу в письме отправленному ему на электронную почту)
+    is_registered: Mapped[bool] = mapped_column(nullable=False, server_default="false")
+    registration_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    token_expires: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
 
     def set_password(self, password: str) -> None:

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 
+from users.models import UserRole
+
 
 class UserCreate(BaseModel):
     # Схема для первичного создания пользователя администратором
@@ -18,7 +20,10 @@ class UserRegister(BaseModel):
     password: str = Field(
         ..., min_length=3, description="Пароль пользователя"
     )
-    is_registered: bool = True
+
+class SuperAdminRegister(UserRegister):
+    # Схема для регистрации супер-админа
+    role: UserRole = UserRole.SUPERADMIN
 
 
 class UserLogin(BaseModel):
@@ -33,7 +38,7 @@ class UserChangePassword(BaseModel):
 
 class UserResponse(BaseModel):
     id: int = Field(..., description="Id пользователя")
-    username: str = Field(..., description="Имя пользователя")
+    username: str | None = Field(None, description="Имя пользователя")
     email: EmailStr = Field(..., description="Почта пользователя")
 
     class Config:
