@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Панель управления - Rudnevo Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Панель управления</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Пользователи</h5>
+                <p class="card-text">Управление пользователями системы</p>
+                <a href="{{ url_for('admin.users') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Новости</h5>
+                <p class="card-text">Управление новостями и публикациями</p>
+                <a href="{{ url_for('admin.news') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "admin-panel"
+version = "0.1.0"
+description = "Admin-panel for Rudnevo"
+authors = [
+    {name = "terlyne", email = "kopelevichde@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+
+[tool.poetry]
+name = "rudnevo-app"
+version = "0.1.0"
+description = "Admin-panel for Rudnevo"
+authors = ["terlyne <kopelevichde@gmail.com>"]
+packages = [
+    {include = "app"}
+]
+
+[tool.poetry.dependencies]
+flask = "^3.1.1"
+python-dotenv = "^1.1.0"
+requests = "^2.32.3"
+flask-login = "^0.6.3"
+wtforms = "^3.2.1"
+email-validator = "^2.2.0"
+python-jose = {extras = ["cryptography"], version = "^3.5.0"}
