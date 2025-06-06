@@ -77,6 +77,8 @@ async def login(
     """Аутентификация администратора"""
     user = await user_crud.get_user_by_username(db, form_data.username)
     if not user:
+        user = await user_crud.get_user_by_email(db, form_data.username)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверное имя пользователя или пароль.",
