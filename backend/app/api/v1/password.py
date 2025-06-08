@@ -22,7 +22,7 @@ async def forgot_password(
     user = await user_crud.get_user_by_email(db, email=password_reset.email)
     if not user:
         # Не сообщаем, что email не существует (безопасность)
-        return {"message": "Письмо для сброса пароля был отправлен, если пользователь с таким адресом существует."}
+        return {"message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."}
 
     # Создаем токен для сброса пароля
     token_expires = timedelta(hours=24)
@@ -32,10 +32,10 @@ async def forgot_password(
     await send_reset_password_email(
         email_to=user.email,
         token=token,
-        username=user.username
+        username=user.username or "пользователь"  # Если username еще не задан
     )
     
-    return {"message": "Письмо для сброса пароля был отправлен, если пользователь с таким адресом существует."}
+    return {"message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."}
 
 
 @router.post("/reset-password")

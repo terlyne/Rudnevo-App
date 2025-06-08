@@ -150,14 +150,14 @@ async def verify_password_reset_token(
             algorithms=[settings.ALGORITHM]
         )
         if payload.get("type") != "password_reset":
-            raise ValueError("Invalid token type")
+            raise ValueError("Неверный тип токена")
         user_id = int(payload.get("sub"))
     except (jwt.JWTError, ValueError):
-        raise ValueError("Invalid token")
+        raise ValueError("Недействительный токен")
     
     user = await get_user(db, user_id)
     if not user:
-        raise ValueError("User not found")
+        raise ValueError("Пользователь не найден")
     
     return user
 
@@ -174,16 +174,16 @@ async def verify_registration_token(
             algorithms=[settings.ALGORITHM]
         )
         if payload.get("type") != "registration":
-            raise ValueError("Invalid token type")
+            raise ValueError("Неверный тип токена")
         user_id = int(payload.get("sub"))
     except (jwt.JWTError, ValueError):
-        raise ValueError("Invalid token")
+        raise ValueError("Недействительный токен")
     
     user = await get_user(db, user_id)
     if not user:
-        raise ValueError("User not found")
+        raise ValueError("Пользователь не найден")
     
     if user.is_registered:
-        raise ValueError("User is already registered")
+        raise ValueError("Пользователь уже зарегистрирован")
     
     return user 

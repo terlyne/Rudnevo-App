@@ -1,0 +1,70 @@
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+}
+
+.logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo__mos-obr {
+    width: 300px;
+}
+
+.logo__rudnevo {
+    width: 230px;
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 400px;
+}
+
+.login-form input {
+    padding: 15px 20px;
+    border-radius: 12px;
+    background: #F5F5F5;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.login-form button {
+    padding: 15px;
+    border-radius: 12px;
+    background: #636363;
+    color: #FFF;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.login-form button:hover {
+    background: #2C2C2C;
+}
+
+.form-container a {
+    color: #636363;
+    font-size: 16px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.form-container a:hover {
+    color: #2C2C2C;
+}

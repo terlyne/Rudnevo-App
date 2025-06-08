@@ -1,0 +1,104 @@
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+}
+
+.logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo__mos-obr {
+    width: 300px;
+}
+
+.logo__rudnevo {
+    width: 230px;
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 400px;
+}
+
+.login-form input {
+    padding: 15px 20px;
+    border-radius: 12px;
+    background: #F5F5F5;
+    font-size: 16px;
+    font-weight: 500;
+    width: 100%;
+}
+
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.show-password {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    color: #636363;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.show-password i {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.show-password:hover {
+    color: #2C2C2C;
+}
+
+.login-form button.submit {
+    padding: 15px;
+    border-radius: 12px;
+    background: #636363;
+    color: #FFF;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.login-form button.submit:hover {
+    background: #2C2C2C;
+}
+
+.form-container a {
+    color: #636363;
+    font-size: 16px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.form-container a:hover {
+    color: #2C2C2C;
+}

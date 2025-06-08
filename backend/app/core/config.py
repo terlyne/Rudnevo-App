@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # Настройки JWT
     SECRET_KEY: str = "your-secret-key-for-jwt-here" # Изменить при деплое!!!!!
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     
     # Настройки почты
     MAIL_USERNAME: str
