@@ -1,5 +1,5 @@
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.db.custom_types import str_uniq
@@ -14,3 +14,6 @@ class User(Base):
     hashed_password: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_superuser: Mapped[bool] = mapped_column(default=False)
     is_registered: Mapped[bool] = mapped_column(default=False)
+    is_recruiter: Mapped[bool] = mapped_column(default=False)
+    
+    vacancies: Mapped[list["Vacancy"]] = relationship("Vacancy", back_populates="recruiter")

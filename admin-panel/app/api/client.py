@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 from urllib.parse import urljoin
 from flask import session
 from requests.exceptions import RequestException
@@ -250,9 +251,302 @@ class APIClient:
             logger.error(f"Network error during invitation: {str(e)}")
             raise APIError(f"Ошибка сети при попытке отправки приглашения: {str(e)}")
 
+    def get_current_user(self) -> dict[str, any]:
+        """Получить информацию о пользователе, зашедшего в админ-панель"""
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+
+        url = f"{settings.API_URL}/api/v1/users/me"
+
+        try:
+            logger.debug("Attempting to get information about current user")
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            logger.debug("Information received successfully")
+            return response.json()
+
+        except RequestException as e:
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке получения информации о текущем пользователе: {str(e)}")
+
     def logout(self) -> None:
         """Выход пользователя"""
         self._clear_token()
 
+
+    def create_action(self, username: str, action: str) -> dict[str, any]:
+        """Создание нового события (выполняется каждый раз при любом действии пользователя: создание новости, редактирование расписания и т.д.)"""
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+        
+        url = f"{settings.API_URL}/api/v1/actions"
+        data = {
+            "username": username,
+            "action": action,
+        }
+
+        try:
+            logger.debug("Attempt to create a new action")
+            response = requests.post(
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            logger.debug("Information has been sent successfully")
+            return response.json()
+
+        except RequestException as e:
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке создания нового события: {str(e)}")
+
+
+    def get_actions(self, limit: int = 10) -> list[dict[str, any]]:
+        """Получить список событий с преобразованным временем"""
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+
+        url = f"{settings.API_URL}/api/v1/actions/?limit={limit}"
+
+        try:
+            logger.debug("Attempt to get actions")
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            actions = response.json()
+            
+            for action in actions:
+                if "created_at" in action:
+                    try:
+                        dt = datetime.fromisoformat(action["created_at"])
+                        action["created_at"] = dt.strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        logger.warning(f"Could not parse date: {action['created_at']}")
+                        continue
+            
+            logger.debug("Information has been received successfully")
+            return actions
+
+        except RequestException as e:
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке получения событий: {str(e)}")
+
+
+    def get(self, uri: str):
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+        
+        url = f"{settings.API_URL}/api/v1{uri}"
+
+        try:
+            logger.debug("Attempt to get information")
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            data = response.json()
+
+            logger.debug("Information has been received successfully")
+            return data
+
+        except RequestException as e:
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке получения информации: {str(e)}")
+
+
+    def get_by_id(self, uri: str, id: int):
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+        
+        url = f"{settings.API_URL}/api/v1{uri}/{id}"
+
+        try:
+            logger.debug("Attempt to get information")
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            data = response.json()
+
+            logger.debug("Information has been received successfully")
+            return data
+        
+        except RequestException as e:
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке получения информации: {str(e)}")
+
+
+    def post(self, uri: str, **data):
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+            
+        url = f"{settings.API_URL}/api/v1{uri}"
+
+        try:
+            logger.debug(f"Attempting POST request to: {url}")
+            logger.debug(f"Request data: {data}")
+            logger.debug(f"Request headers: {self.headers}")
+            
+            response = requests.post(
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            logger.debug(f"Response status: {response.status_code}")
+            logger.debug(f"Response headers: {response.headers}")
+            logger.debug(f"Response content: {response.text}")
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            data = response.json()
+
+            logger.debug("Information has been sent successfully")
+            return data
+
+        except RequestException as e:
+            logger.error(f"Network error during POST request: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке создании: {str(e)}")
+
+    def put(self, uri: str, **data):
+        """PUT запрос к API"""
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+            
+        url = f"{settings.API_URL}/api/v1{uri}"
+        
+        try:
+            logger.debug("Attempt to update information")
+            response = requests.put(
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout
+            )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            data = response.json()
+            logger.debug("Information has been updated successfully")
+            return data
+            
+        except RequestException as e:
+            logger.error(f"Network error during update: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке обновления: {str(e)}")
+
+    def delete(self, uri: str):
+        """DELETE запрос к API"""
+        if not self.token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+            
+        url = f"{settings.API_URL}/api/v1{uri}"
+        
+        try:
+            logger.debug("Attempt to delete information")
+            response = requests.delete(
+                url,
+                headers=self.headers,
+                timeout=self.timeout
+            )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            data = response.json()
+            logger.debug("Information has been deleted successfully")
+            return data
+            
+        except RequestException as e:
+            logger.error(f"Network error during deletion: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке удаления: {str(e)}")
+
+    # Методы для работы с вакансиями
+    def get_vacancies(self, show_hidden: bool = False):
+        """Получить список вакансий"""
+        return self.get(f"/vacancies?show_hidden={show_hidden}")
+
+    def get_vacancy(self, vacancy_id: int):
+        """Получить вакансию по ID"""
+        return self.get_by_id("/vacancies", vacancy_id)
+
+    def create_vacancy(self, **data):
+        """Создать вакансию"""
+        logger.info(f"Creating vacancy with data: {data}")
+        result = self.post("/vacancies", **data)
+        logger.info(f"Vacancy creation successful: {result}")
+        return result
+
+    def update_vacancy(self, vacancy_id: int, **data):
+        """Обновить вакансию"""
+        return self.put(f"/vacancies/{vacancy_id}", **data)
+
+    def delete_vacancy(self, vacancy_id: int):
+        """Удалить вакансию"""
+        return self.delete(f"/vacancies/{vacancy_id}")
+
+    def get_vacancy_statistics(self, vacancy_id: int):
+        """Получить статистику вакансии"""
+        return self.get(f"/vacancies/{vacancy_id}/statistics")
+
+    # Методы для работы со студентами
+    def get_students(self, vacancy_id: int = None, status: str = None):
+        """Получить список студентов"""
+        params = []
+        if vacancy_id:
+            params.append(f"vacancy_id={vacancy_id}")
+        if status:
+            params.append(f"status={status}")
+        
+        query = "&".join(params) if params else ""
+        uri = f"/students{f'?{query}' if query else ''}"
+        return self.get(uri)
+
+    def get_student(self, student_id: int):
+        """Получить студента по ID"""
+        return self.get_by_id("/students", student_id)
+
+    def update_student(self, student_id: int, **data):
+        """Обновить студента"""
+        return self.put(f"/students/{student_id}", **data)
+
+    def delete_student(self, student_id: int):
+        """Удалить студента"""
+        return self.delete(f"/students/{student_id}")
+
+    def bulk_update_student_status(self, student_ids: list[int], status: str):
+        """Массовое обновление статусов студентов"""
+        return self.post("/students/bulk-status-update", 
+                        student_ids=student_ids, 
+                        status=status)
 
 api_client = APIClient(settings.API_URL)

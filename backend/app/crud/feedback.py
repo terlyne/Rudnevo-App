@@ -22,7 +22,6 @@ async def get_feedbacks(
     """Получить список обратной связи"""
     result = await db.execute(
         select(Feedback)
-        .order_by(Feedback.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -34,7 +33,8 @@ async def create_feedback(
     feedback_in: FeedbackCreate
 ) -> Feedback:
     """Создать обратную связь"""
-    db_feedback = Feedback(**feedback_in.model_dump())
+    feedback_data = feedback_in.model_dump()
+    db_feedback = Feedback(**feedback_data)
     db.add(db_feedback)
     await db.commit()
     await db.refresh(db_feedback)

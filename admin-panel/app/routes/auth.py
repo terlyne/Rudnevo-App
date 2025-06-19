@@ -91,7 +91,7 @@ def register():
                 token=token
             )
             flash("Регистрация успешна", category="success")
-            return render_template("auth/register.html", redirect_after=url_for("auth.login"))
+            return redirect(url_for("auth.login"))
             
         except ValidationError as e:
             logger.error(f"Validation error during registration: {str(e)}")

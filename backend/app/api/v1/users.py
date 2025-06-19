@@ -25,7 +25,7 @@ async def read_users(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Получить список пользователей (только для администраторов)"""
+    """Получить список пользователей (только для супер-пользователей)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -41,7 +41,7 @@ async def read_user(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Получить пользователя по ID (только для администраторов)"""
+    """Получить пользователя по ID (только для супер-пользователей)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -63,7 +63,7 @@ async def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_active_user)
 ):
-    """Удалить пользователя (только для администраторов)"""
+    """Удалить пользователя (только для супер-пользователей)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

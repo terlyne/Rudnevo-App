@@ -1,9 +1,25 @@
-{% extends "base.html" %}
+{% extends "panel/base.html" %}
+
+{% block title %}
+Руднево - Главная страница
+{% endblock %}
 
 {% block styles %}
+{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/panel/home.css') }}">
 {% endblock %}
 
-{% block body %}
-<div>Главная страница админ-панели</div>
+{% block container %}
+<h1>Последние события</h1>
+<div class="actions-container">
+    <div class="actions-scroll">
+        {% for action in last_actions %}
+        <div class="action-item">
+            <span class="action-username">{{ action.username }}</span>
+            <span class="action-text">{{ action.action }}</span>
+            <span class="action-time">{{ action.created_at }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

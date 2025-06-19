@@ -19,15 +19,39 @@ router = APIRouter()
 async def read_news(
     skip: int = 0,
     limit: int = 100,
-    show_hidden: bool = False,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Получить список новостей"""
+    # Для администраторов показываем все новости (включая скрытые)
+    show_hidden = current_user.is_superuser
     return await news_crud.get_news_list(
         db,
         skip=skip,
         limit=limit,
         show_hidden=show_hidden
+    )
+
+
+@router.get("/hidden", response_model=list[NewsInDB])
+async def read_hidden_news(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Получить список скрытых новостей (только для администраторов)"""
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет прав на выполнение данного функционала."
+        )
+    
+    return await news_crud.get_news_list(
+        db,
+        skip=skip,
+        limit=limit,
+        show_hidden=True
     )
 
 

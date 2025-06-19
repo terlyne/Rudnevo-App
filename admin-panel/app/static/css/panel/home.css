@@ -1,0 +1,75 @@
+h1 {
+    display: flex;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 40px;
+}
+
+.actions-container {
+    margin: 0 200px;
+    padding-bottom: 100px;
+    /* Создаем пространство снизу */
+}
+
+.actions-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 600px;
+    /* Фиксированная высота для скролла */
+}
+
+/* Возвращаем оригинальную стилизацию скроллбара */
+.actions-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.actions-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.actions-scroll::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 4px;
+}
+
+.actions-scroll::-webkit-scrollbar-thumb:hover {
+    background: #95a5a6;
+}
+
+.action-item {
+    padding: 16px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-username {
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 120px;
+}
+
+.action-text {
+    flex-grow: 1;
+    color: #34495e;
+}
+
+.action-time {
+    color: #7f8c8d;
+    font-size: 0.9em;
+    min-width: 120px;
+    text-align: right;
+}

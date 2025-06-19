@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,12 +8,13 @@ from datetime import timedelta
 
 from app.core.config import settings
 from app.api.v1 import api_router
-from app.db.session import engine, async_session_maker
+from app.db.session import engine, async_session_maker, get_async_session
 from app.models import Base
 from app.crud.user import get_user_by_email, create_user
 from app.schemas.user import UserCreate
 from app.core.security import create_access_token
 from app.utils.email import send_registration_email
+from app.utils.task_scheduler import run_periodic_task, actions_weekly_cleanup
 
 
 @asynccontextmanager
@@ -25,19 +27,28 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
+    # Запуск задачи очистки таблицы с событиями
+    async def start_background_tasks():
+        async for db in get_async_session():
+            asyncio.create_task(run_periodic_task(db, actions_weekly_cleanup))
+    
+    asyncio.create_task(start_background_tasks())
     
     # Создаем директории для медиафайлов
     media_root = Path(settings.MEDIA_ROOT)
     (media_root / "news").mkdir(parents=True, exist_ok=True)
+    (media_root / "resumes").mkdir(parents=True, exist_ok=True)
     
     # Создаем начального пользователя только с email
     async with async_session_maker() as session:
         admin = await get_user_by_email(session, settings.ADMIN_EMAIL)
         if not admin:
-            # Создаем пользователя только с email и is_superuser=True
+            # Создаем пользователя только с email, is_superuser=True и is_recruiter=True
             user_in = UserCreate(
                 email=settings.ADMIN_EMAIL,
-                is_superuser=True
+                is_superuser=True,
+                is_recruiter=True,
             )
             admin = await create_user(session, user_in)
             

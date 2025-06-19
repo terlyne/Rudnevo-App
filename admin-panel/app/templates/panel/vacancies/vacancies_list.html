@@ -1,0 +1,148 @@
+{% extends "panel/base.html" %}
+
+{% block title %}
+Руднево - Вакансии
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/vacancies/vacancies_list.css') }}">
+{% endblock %}
+
+{% block container %}
+<div class="vacancies-header">
+    <h1>Вакансии</h1>
+    <div class="vacancies-controls">
+        <a href="{{ url_for('panel.vacancy_create') }}" class="btn-create">Создать вакансию</a>
+        <div class="filter-controls">
+            <label class="filter-label">
+                <input type="checkbox" id="show-hidden" 
+                       {% if show_hidden %}checked{% endif %}
+                       onchange="toggleHiddenVacancies()">
+                Показать скрытые
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="vacancies-container">
+    <div class="vacancies-scroll">
+        {% for vacancy in vacancies %}
+        <div class="vacancy-item">
+            <div class="vacancy-header">
+                <div class="vacancy-title-section">
+                    <h3 class="vacancy-title">{{ vacancy.title }}</h3>
+                    <div class="vacancy-status">
+                        {% if vacancy.is_hidden %}
+                            <span class="status-hidden">Скрыта</span>
+                        {% else %}
+                            <span class="status-active">Активна</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="vacancy-actions">
+                    <a href="{{ url_for('panel.vacancy_applications', vacancy_id=vacancy.id) }}" 
+                       class="btn-applications">Заявки ({{ vacancy.statistics.total_applications }})</a>
+                    <a href="{{ url_for('panel.vacancy_edit', vacancy_id=vacancy.id) }}" 
+                       class="btn-edit">Редактировать</a>
+                    <button onclick="deleteVacancy({{ vacancy.id }})" class="btn-delete">Удалить</button>
+                </div>
+            </div>
+            
+            <div class="vacancy-details">
+                <div class="vacancy-info">
+                    <div class="info-row">
+                        <span class="info-label">Направление:</span>
+                        <span class="info-value">{{ vacancy.direction }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Специальность:</span>
+                        <span class="info-value">{{ vacancy.speciality }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Формат работы:</span>
+                        <span class="info-value">{{ vacancy.work_format }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Период:</span>
+                        <span class="info-value">{{ vacancy.start }} - {{ vacancy.end }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Контактное лицо:</span>
+                        <span class="info-value">{{ vacancy.contact_person }}</span>
+                    </div>
+                </div>
+                
+                <div class="vacancy-statistics">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Всего заявок</span>
+                            <span class="stat-value">{{ vacancy.statistics.total_applications }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Новые</span>
+                            <span class="stat-value new">{{ vacancy.statistics.new_applications }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">В рассмотрении</span>
+                            <span class="stat-value review">{{ vacancy.statistics.in_review_applications }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Приглашены</span>
+                            <span class="stat-value invited">{{ vacancy.statistics.invited_applications }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Отказы</span>
+                            <span class="stat-value rejected">{{ vacancy.statistics.rejected_applications }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Конверсия</span>
+                            <span class="stat-value conversion">{{ vacancy.statistics.conversion_rate }}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="vacancy-progress">
+                        <div class="progress-info">
+                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount }}</span>
+                            {% if vacancy.statistics.is_full %}
+                                <span class="status-full">Вакансия заполнена</span>
+                            {% endif %}
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ [vacancy.statistics.total_applications / vacancy.required_amount * 100, 100] | min }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vacancy-description">
+                <h4>Описание:</h4>
+                <p>{{ vacancy.description[:200] }}{% if vacancy.description|length > 200 %}...{% endif %}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Форма для удаления вакансии -->
+<form id="delete-form" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+</form>
+
+<script>
+function toggleHiddenVacancies() {
+    const checkbox = document.getElementById('show-hidden');
+    const url = new URL(window.location);
+    url.searchParams.set('show_hidden', checkbox.checked);
+    window.location.href = url.toString();
+}
+
+function deleteVacancy(vacancyId) {
+    if (confirm('Вы уверены, что хотите удалить эту вакансию?')) {
+        const form = document.getElementById('delete-form');
+        form.action = `/vacancies/${vacancyId}/delete`;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "panel/base.html" %}
+
+{% block title %}
+Руднево - Заявки на вакансию "{{ vacancy.title }}"
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/vacancies/vacancy_applications.css') }}">
+{% endblock %}
+
+{% block container %}
+<div class="applications-header">
+    <div class="header-info">
+        <h1>Заявки на вакансию</h1>
+        <h2>"{{ vacancy.title }}"</h2>
+        <div class="vacancy-meta">
+            <span class="meta-item">{{ vacancy.direction }} • {{ vacancy.speciality }}</span>
+            <span class="meta-item">{{ vacancy.work_format }}</span>
+            <span class="meta-item">{{ vacancy.start }} - {{ vacancy.end }}</span>
+        </div>
+    </div>
+    <a href="{{ url_for('panel.vacancies_list') }}" class="btn-back">← Назад к вакансиям</a>
+</div>
+
+<div class="applications-container">
+    <div class="applications-tabs">
+        <div class="tab-header">
+            <div class="tab-item active" data-tab="new">
+                Новые <span class="tab-count">{{ students_by_status.new|length }}</span>
+            </div>
+            <div class="tab-item" data-tab="in_review">
+                В рассмотрении <span class="tab-count">{{ students_by_status.in_review|length }}</span>
+            </div>
+            <div class="tab-item" data-tab="invited">
+                Приглашены <span class="tab-count">{{ students_by_status.invited|length }}</span>
+            </div>
+            <div class="tab-item" data-tab="rejected">
+                Отказы <span class="tab-count">{{ students_by_status.rejected|length }}</span>
+            </div>
+        </div>
+        
+        <div class="tab-content">
+            <form method="POST" class="applications-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="bulk_update_status">
+                
+                <div class="bulk-actions">
+                    <div class="bulk-controls">
+                        <label class="select-all-label">
+                            <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                            Выбрать все
+                        </label>
+                        <div class="bulk-status-update">
+                            <select name="status" id="bulk-status">
+                                <option value="">Выберите статус</option>
+                                <option value="new">Новая</option>
+                                <option value="in_review">В рассмотрении</option>
+                                <option value="invited">Приглашён</option>
+                                <option value="rejected">Отказ</option>
+                            </select>
+                            <button type="submit" class="btn-update-status" disabled id="update-status-btn">
+                                Обновить статус
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                {% for status, students in students_by_status.items() %}
+                <div class="tab-panel {% if status == 'new' %}active{% endif %}" id="tab-{{ status }}">
+                    {% if students %}
+                        <div class="students-list">
+                            {% for student in students %}
+                            <div class="student-item">
+                                <div class="student-checkbox">
+                                    <input type="checkbox" name="student_ids" value="{{ student.id }}" 
+                                           class="student-checkbox-input" onchange="updateBulkButton()">
+                                </div>
+                                
+                                <div class="student-info">
+                                    <div class="student-header">
+                                        <h3 class="student-name">{{ student.full_name }}</h3>
+                                        <div class="student-status status-{{ student.status }}">
+                                            {% if student.status == 'new' %}Новая
+                                            {% elif student.status == 'in_review' %}В рассмотрении
+                                            {% elif student.status == 'invited' %}Приглашён
+                                            {% elif student.status == 'rejected' %}Отказ
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="student-details">
+                                        <div class="detail-row">
+                                            <span class="detail-label">Дата рождения:</span>
+                                            <span class="detail-value">{{ student.birth_date }}</span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Специальность:</span>
+                                            <span class="detail-value">{{ student.speciality }}</span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Телефон:</span>
+                                            <span class="detail-value">{{ student.phone }}</span>
+                                        </div>
+                                        {% if student.resume_link %}
+                                        <div class="detail-row">
+                                            <span class="detail-label">Резюме:</span>
+                                            <a href="{{ student.resume_link }}" target="_blank" class="detail-link">
+                                                Ссылка на резюме
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                        {% if student.resume_file %}
+                                        <div class="detail-row">
+                                            <span class="detail-label">Файл резюме:</span>
+                                            <a href="/media/{{ student.resume_file }}" target="_blank" class="detail-link">
+                                                Скачать резюме
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="student-actions">
+                                        <button type="button" class="btn-change-status" 
+                                                onclick="showStatusModal({{ student.id }}, '{{ student.status }}')">
+                                            Изменить статус
+                                        </button>
+                                        <button type="button" class="btn-view-details" 
+                                                onclick="showStudentDetails({{ student.id }})">
+                                            Подробнее
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <p>Нет заявок со статусом 
+                                {% if status == 'new' %}"Новые"
+                                {% elif status == 'in_review' %}"В рассмотрении"
+                                {% elif status == 'invited' %}"Приглашены"
+                                {% elif status == 'rejected' %}"Отказы"
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для изменения статуса -->
+<div id="status-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Изменить статус заявки</h3>
+            <span class="close" onclick="closeStatusModal()">&times;</span>
+        </div>
+        <form method="POST" id="status-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="bulk_update_status">
+            <input type="hidden" name="student_ids" id="modal-student-id">
+            <div class="form-group">
+                <label for="modal-status">Новый статус:</label>
+                <select name="status" id="modal-status" required>
+                    <option value="new">Новая</option>
+                    <option value="in_review">В рассмотрении</option>
+                    <option value="invited">Приглашён</option>
+                    <option value="rejected">Отказ</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-submit">Сохранить</button>
+                <button type="button" class="btn-cancel" onclick="closeStatusModal()">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно для деталей студента -->
+<div id="student-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Детали заявки</h3>
+            <span class="close" onclick="closeStudentModal()">&times;</span>
+        </div>
+        <div id="student-details-content">
+            <!-- Контент будет загружен динамически -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Переключение табов
+document.querySelectorAll('.tab-item').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const targetTab = this.dataset.tab;
+        
+        // Убираем активный класс у всех табов
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        
+        // Добавляем активный класс к выбранному табу
+        this.classList.add('active');
+        document.getElementById('tab-' + targetTab).classList.add('active');
+    });
+});
+
+// Выбрать все
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.student-checkbox-input');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateBulkButton();
+}
+
+// Обновить кнопку массового обновления
+function updateBulkButton() {
+    const checkboxes = document.querySelectorAll('.student-checkbox-input:checked');
+    const updateBtn = document.getElementById('update-status-btn');
+    const statusSelect = document.getElementById('bulk-status');
+    
+    updateBtn.disabled = checkboxes.length === 0 || !statusSelect.value;
+}
+
+// Модальное окно статуса
+function showStatusModal(studentId, currentStatus) {
+    document.getElementById('modal-student-id').value = studentId;
+    document.getElementById('modal-status').value = currentStatus;
+    document.getElementById('status-modal').style.display = 'block';
+}
+
+function closeStatusModal() {
+    document.getElementById('status-modal').style.display = 'none';
+}
+
+// Модальное окно деталей студента
+function showStudentDetails(studentId) {
+    // Здесь можно загрузить детали студента через AJAX
+    document.getElementById('student-modal').style.display = 'block';
+}
+
+function closeStudentModal() {
+    document.getElementById('student-modal').style.display = 'none';
+}
+
+// Закрытие модальных окон при клике вне их
+window.onclick = function(event) {
+    const statusModal = document.getElementById('status-modal');
+    const studentModal = document.getElementById('student-modal');
+    
+    if (event.target === statusModal) {
+        closeStatusModal();
+    }
+    if (event.target === studentModal) {
+        closeStudentModal();
+    }
+}
+
+// Обработка изменения статуса в массовом обновлении
+document.getElementById('bulk-status').addEventListener('change', updateBulkButton);
+</script>
+{% endblock %} 

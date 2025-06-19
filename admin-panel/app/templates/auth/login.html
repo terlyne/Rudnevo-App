@@ -18,6 +18,7 @@
     </div>
     <div class="form-container">
         <form action="{{ url_for('auth.login') }}" method="POST" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="text" placeholder="Имя пользователя или эл. почта" name="username" value="" required>
             <div class="password-wrapper">
                 <input type="password" placeholder="Пароль" name="password" id="passwordInput" required>

@@ -126,7 +126,8 @@ async def invite_user(
     new_user = UserCreate(
         email=user_in.email,
         is_superuser=False,  # Новый пользователь никогда не может быть суперпользователем
-        is_registered=False
+        is_registered=False,
+        is_recruiter=user_in.is_recruiter,
     )
     user = await user_crud.create_user(db, new_user)
     

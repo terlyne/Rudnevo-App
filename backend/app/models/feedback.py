@@ -12,5 +12,5 @@ class Feedback(Base):
 
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(100))
-    answer: Mapped[str | None] = mapped_column(String, nullable=True)
+    message: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[created_at]

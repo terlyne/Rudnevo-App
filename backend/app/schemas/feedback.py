@@ -1,23 +1,19 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
-
+from pydantic import BaseModel, EmailStr, Field
 
 class FeedbackBase(BaseModel):
     """Базовая схема обратной связи"""
     name: str
     email: EmailStr
-    feedback: str
-
+    message: str
 
 class FeedbackCreate(FeedbackBase):
     """Схема создания обратной связи"""
     pass
 
-
 class FeedbackResponse(BaseModel):
     """Схема ответа на обратную связь"""
     response_text: str
-
 
 class FeedbackInDB(FeedbackBase):
     """Схема обратной связи из БД"""
@@ -26,4 +22,3 @@ class FeedbackInDB(FeedbackBase):
 
     class Config:
         from_attributes = True
-

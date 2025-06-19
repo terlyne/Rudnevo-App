@@ -48,7 +48,8 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
         username=user_in.username,
         hashed_password=get_password_hash(user_in.password) if user_in.password else None,
         is_superuser=user_in.is_superuser,
-        is_registered=user_in.is_registered
+        is_registered=user_in.is_registered,
+        is_recruiter=user_in.is_recruiter
     )
     db.add(db_obj)
     await db.commit()

@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     username: str | None = None
     is_superuser: bool = False
     is_registered: bool = False
+    is_recruiter: bool = False
 
 
 class UserCreate(UserBase):
@@ -24,6 +25,7 @@ class UserUpdate(BaseModel):
 class UserInvite(BaseModel):
     """Схема для приглашения пользователя"""
     email: EmailStr
+    is_recruiter: bool = False
 
 
 class UserRegistration(BaseModel):

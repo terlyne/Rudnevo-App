@@ -56,11 +56,39 @@ class Settings(BaseSettings):
     # Настройки медиафайлов
     MEDIA_ROOT: Path = Path("media")
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB для файлов резюме
     ALLOWED_IMAGE_TYPES: set[str] = {
         "image/jpeg",
         "image/png",
         "image/gif",
         "image/webp"
+    }
+    ALLOWED_RESUME_TYPES: set[str] = {
+        # PDF документы
+        "application/pdf",
+        
+        # Microsoft Office документы
+        "application/msword",  # .doc
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+        "application/vnd.ms-excel",  # .xls
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
+        "application/vnd.ms-powerpoint",  # .ppt
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # .pptx
+        
+        # Текстовые форматы
+        "text/plain",  # .txt
+        "text/rtf",  # .rtf
+        "text/html",  # .html, .htm
+        "text/markdown",  # .md
+        
+        # OpenDocument форматы
+        "application/vnd.oasis.opendocument.text",  # .odt
+        "application/vnd.oasis.opendocument.spreadsheet",  # .ods
+        "application/vnd.oasis.opendocument.presentation",  # .odp
+        
+        # Другие популярные форматы
+        "application/rtf",  # .rtf (альтернативный MIME тип)
+        "application/x-rtf",  # .rtf (еще один альтернативный MIME тип)
     }
 
     # CORS
