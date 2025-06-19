@@ -1,6 +1,6 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for
+from flask import Blueprint, request, render_template, flash, redirect, url_for, send_file
+import io
 from datetime import datetime
-import requests
 import logging
 
 from api.client import api_client, AuthenticationError, ValidationError, APIError
@@ -338,6 +338,23 @@ def profile():
 @login_required
 def student_resume_file():
     student_id = request.args.get("student_id")
+    student_full_name = "_".join(request.args.get("student_full_name").split())
     if not student_id:
         flash("Не указан студент", "error")
         return redirect(url_for("panel.vacancies_list"))
+
+    file_data = api_client.download_file(f"/students/{student_id}/resume-file")
+    if not file_data:
+        flash("Файл резюме не найден", "error")
+        return redirect(url_for("panel.vacancies_list"))
+
+    if isinstance(file_data, bytes):
+        file_data = io.BytesIO(file_data)
+
+    filename = f"resume_{student_full_name}.pdf"
+
+    return send_file(
+        file_data,
+        as_attachment=True,
+        download_name=filename,
+    )

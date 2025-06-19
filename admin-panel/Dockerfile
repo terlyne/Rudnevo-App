@@ -2,13 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY admin-panel/pyproject.toml admin-panel/poetry.lock ./
+COPY pyproject.toml poetry.lock ./
 RUN pip install --upgrade pip && \
     pip install poetry && \
     poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction --no-ansi
+    poetry install --only main --no-interaction --no-ansi --no-root
 
-COPY admin-panel/app ./app
+COPY app ./app
 
 EXPOSE 5000
 

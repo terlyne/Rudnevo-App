@@ -70,3 +70,21 @@ window.onclick = function (event) {
 
 // Обработка изменения статуса в массовом обновлении
 document.getElementById('bulk-status').addEventListener('change', updateBulkButton);
+
+
+// Скачивание резюме
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.download-resume').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.href;
+            // Создаём временный <a> для скачивания
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+    });
+});

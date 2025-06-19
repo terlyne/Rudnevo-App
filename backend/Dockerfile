@@ -3,14 +3,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Установка зависимостей
-COPY backend/pyproject.toml backend/poetry.lock ./
+COPY pyproject.toml poetry.lock ./
 RUN pip install --upgrade pip && \
     pip install poetry && \
     poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction --no-ansi
+    poetry install --only main --no-interaction --no-ansi --no-root
 
 # Копируем код приложения
-COPY backend/app ./app
+COPY app ./app
 
 # Создаем директорию для медиафайлов
 RUN mkdir -p /app/media
