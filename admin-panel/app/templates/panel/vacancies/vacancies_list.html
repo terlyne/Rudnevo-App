@@ -16,9 +16,8 @@
         <a href="{{ url_for('panel.vacancy_create') }}" class="btn-create">Создать вакансию</a>
         <div class="filter-controls">
             <label class="filter-label">
-                <input type="checkbox" id="show-hidden" 
-                       {% if show_hidden %}checked{% endif %}
-                       onchange="toggleHiddenVacancies()">
+                <input type="checkbox" id="show-hidden" {% if show_hidden %}checked{% endif %}
+                    onchange="toggleHiddenVacancies()">
                 Показать скрытые
             </label>
         </div>
@@ -34,21 +33,21 @@
                     <h3 class="vacancy-title">{{ vacancy.title }}</h3>
                     <div class="vacancy-status">
                         {% if vacancy.is_hidden %}
-                            <span class="status-hidden">Скрыта</span>
+                        <span class="status-hidden">Скрыта</span>
                         {% else %}
-                            <span class="status-active">Активна</span>
+                        <span class="status-active">Активна</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="vacancy-actions">
-                    <a href="{{ url_for('panel.vacancy_applications', vacancy_id=vacancy.id) }}" 
-                       class="btn-applications">Заявки ({{ vacancy.statistics.total_applications }})</a>
-                    <a href="{{ url_for('panel.vacancy_edit', vacancy_id=vacancy.id) }}" 
-                       class="btn-edit">Редактировать</a>
+                    <a href="{{ url_for('panel.vacancy_applications', vacancy_id=vacancy.id) }}"
+                        class="btn-applications">Заявки ({{ vacancy.statistics.total_applications }})</a>
+                    <a href="{{ url_for('panel.vacancy_edit', vacancy_id=vacancy.id) }}"
+                        class="btn-edit">Редактировать</a>
                     <button onclick="deleteVacancy({{ vacancy.id }})" class="btn-delete">Удалить</button>
                 </div>
             </div>
-            
+
             <div class="vacancy-details">
                 <div class="vacancy-info">
                     <div class="info-row">
@@ -72,7 +71,7 @@
                         <span class="info-value">{{ vacancy.contact_person }}</span>
                     </div>
                 </div>
-                
+
                 <div class="vacancy-statistics">
                     <div class="stats-grid">
                         <div class="stat-item">
@@ -100,21 +99,24 @@
                             <span class="stat-value conversion">{{ vacancy.statistics.conversion_rate }}%</span>
                         </div>
                     </div>
-                    
+
                     <div class="vacancy-progress">
                         <div class="progress-info">
-                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount }}</span>
+                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount
+                                }}</span>
                             {% if vacancy.statistics.is_full %}
-                                <span class="status-full">Вакансия заполнена</span>
+                            <span class="status-full">Вакансия заполнена</span>
                             {% endif %}
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ [vacancy.statistics.total_applications / vacancy.required_amount * 100, 100] | min }}%"></div>
+                            <div class="progress-fill"
+                                style="width: {{ [vacancy.statistics.total_applications / vacancy.required_amount * 100, 100] | min }}%">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="vacancy-description">
                 <h4>Описание:</h4>
                 <p>{{ vacancy.description[:200] }}{% if vacancy.description|length > 200 %}...{% endif %}</p>
@@ -129,20 +131,5 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 </form>
 
-<script>
-function toggleHiddenVacancies() {
-    const checkbox = document.getElementById('show-hidden');
-    const url = new URL(window.location);
-    url.searchParams.set('show_hidden', checkbox.checked);
-    window.location.href = url.toString();
-}
-
-function deleteVacancy(vacancyId) {
-    if (confirm('Вы уверены, что хотите удалить эту вакансию?')) {
-        const form = document.getElementById('delete-form');
-        form.action = `/vacancies/${vacancyId}/delete`;
-        form.submit();
-    }
-}
-</script>
+<script src="{{ url_for('static', filename='js/panel/vacancies/vacancies_list.js') }}"></script>
 {% endblock %}
