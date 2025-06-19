@@ -1,18 +1,12 @@
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine
-)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 
 # Создаем асинхронный движок
 engine = create_async_engine(
-    str(settings.SQLALCHEMY_DATABASE_URI),
-    echo=settings.DB_ECHO,
-    future=True
+    str(settings.SQLALCHEMY_DATABASE_URI), echo=settings.DB_ECHO, future=True
 )
 
 # Создаем фабрику асинхронных сессий

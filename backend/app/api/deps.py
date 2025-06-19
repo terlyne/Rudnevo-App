@@ -13,8 +13,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_session)
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_session)
 ) -> User:
     """Получить текущего администратора"""
     credentials_exception = HTTPException(
@@ -22,12 +21,10 @@ async def get_current_user(
         detail="Не удалось подтвердить учетные данные.",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         username: str = payload.get("sub")
         if username is None:
@@ -35,11 +32,11 @@ async def get_current_user(
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    
+
     user = await get_user_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception
-    
+
     return user
 
 
@@ -49,9 +46,26 @@ async def get_current_active_user(
     """Получить текущего активного администратора"""
     if not current_user.is_registered:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неактивный пользователь."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Неактивный пользователь."
         )
+    
+    if current_user.is_recruiter:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на использование данного функционала."
+        )
+
+    return current_user
+
+
+async def get_current_active_recruiter(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Получить текущего активного работодателя"""
+    if not current_user.is_recruiter:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на использование данного функционала."
+        )
+    
     return current_user
 
 
@@ -62,6 +76,6 @@ async def get_current_superuser(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У пользователя недостаточно привилегий."
+            detail="У пользователя недостаточно привилегий.",
         )
     return current_user

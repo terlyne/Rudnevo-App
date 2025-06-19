@@ -11,9 +11,7 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=UserInDB)
-async def read_user_me(
-    current_user: User = Depends(get_current_active_user)
-):
+async def read_user_me(current_user: User = Depends(get_current_active_user)):
     """Получить текущего пользователя"""
     return current_user
 
@@ -23,13 +21,13 @@ async def read_users(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Получить список пользователей (только для супер-пользователей)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     users = await user_crud.get_users(db, skip=skip, limit=limit)
     return users
@@ -39,19 +37,18 @@ async def read_users(
 async def read_user(
     user_id: int,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Получить пользователя по ID (только для супер-пользователей)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     user = await user_crud.get_user(db, user_id)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пользователь не найден."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден."
         )
     return user
 
@@ -67,11 +64,10 @@ async def delete_user(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     if not await user_crud.delete_user(db, user_id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пользователь не найден."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден."
         )
     return {"ok": True}

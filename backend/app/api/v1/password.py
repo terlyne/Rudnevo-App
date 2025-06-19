@@ -15,50 +15,51 @@ router = APIRouter()
 
 @router.post("/forgot-password")
 async def forgot_password(
-    password_reset: PasswordReset,
-    db: AsyncSession = Depends(get_async_session)
+    password_reset: PasswordReset, db: AsyncSession = Depends(get_async_session)
 ):
     """Запрос на сброс пароля"""
     user = await user_crud.get_user_by_email(db, email=password_reset.email)
     if not user:
         # Не сообщаем, что email не существует (безопасность)
-        return {"message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."}
+        return {
+            "message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."
+        }
 
     # Создаем токен для сброса пароля
     token_expires = timedelta(hours=24)
     token = user_crud.create_password_reset_token(user, expires_delta=token_expires)
-    
+
     # Отправляем email
     await send_reset_password_email(
         email_to=user.email,
         token=token,
-        username=user.username or "пользователь"  # Если username еще не задан
+        username=user.username or "пользователь",  # Если username еще не задан
     )
-    
-    return {"message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."}
+
+    return {
+        "message": "Письмо для сброса пароля было отправлено, если пользователь с таким адресом существует."
+    }
 
 
 @router.post("/reset-password")
 async def reset_password(
-    password_reset: PasswordResetConfirm,
-    db: AsyncSession = Depends(get_async_session)
+    password_reset: PasswordResetConfirm, db: AsyncSession = Depends(get_async_session)
 ):
     """Подтверждение сброса пароля"""
     try:
         user = await user_crud.verify_password_reset_token(
-            db, 
-            token=password_reset.token
+            db, token=password_reset.token
         )
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Недействительный или просроченный токен."
+            detail="Недействительный или просроченный токен.",
         )
-    
+
     # Обновляем пароль
     user_update = {"password": password_reset.new_password}
     user = await user_crud.update_user(db, user.id, user_update)
-    
+
     return {"message": "Пароль был успешно обновлен."}
 
 
@@ -66,17 +67,18 @@ async def reset_password(
 async def change_password(
     password_change: PasswordChange,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Изменение пароля авторизованным администратором"""
-    if not verify_password(password_change.current_password, current_user.hashed_password):
+    if not verify_password(
+        password_change.current_password, current_user.hashed_password
+    ):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неправильный пароль."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Неправильный пароль."
         )
-    
+
     # Обновляем пароль
     user_update = {"password": password_change.new_password}
     await user_crud.update_user(db, current_user.id, user_update)
-    
-    return {"message": "Пароль был успешно обновлен."} 
+
+    return {"message": "Пароль был успешно обновлен."}

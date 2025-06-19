@@ -32,14 +32,14 @@ async def lifespan(app: FastAPI):
     async def start_background_tasks():
         async for db in get_async_session():
             asyncio.create_task(run_periodic_task(db, actions_weekly_cleanup))
-    
+
     asyncio.create_task(start_background_tasks())
-    
+
     # Создаем директории для медиафайлов
     media_root = Path(settings.MEDIA_ROOT)
     (media_root / "news").mkdir(parents=True, exist_ok=True)
     (media_root / "resumes").mkdir(parents=True, exist_ok=True)
-    
+
     # Создаем начального пользователя только с email
     async with async_session_maker() as session:
         admin = await get_user_by_email(session, settings.ADMIN_EMAIL)
@@ -51,22 +51,19 @@ async def lifespan(app: FastAPI):
                 is_recruiter=True,
             )
             admin = await create_user(session, user_in)
-            
+
             # Создаем токен для регистрации
             token_expires = timedelta(hours=24)
             token = create_access_token(
                 data={"sub": str(admin.id), "type": "registration"},
-                expires_delta=token_expires
+                expires_delta=token_expires,
             )
-            
+
             # Отправляем email с приглашением
-            await send_registration_email(
-                email_to=admin.email,
-                token=token
-            )
-    
+            await send_registration_email(email_to=admin.email, token=token)
+
     yield
-    
+
     # Очистка ресурсов при остановке
     await engine.dispose()
 
@@ -76,7 +73,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Настраиваем CORS

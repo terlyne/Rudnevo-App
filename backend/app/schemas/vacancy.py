@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class VacancyBase(BaseModel):
     """Базовая схема вакансии"""
+
     title: str
     description: str
     direction: str = Field(max_length=100)
@@ -20,11 +21,13 @@ class VacancyBase(BaseModel):
 
 class VacancyCreate(VacancyBase):
     """Схема создания вакансии"""
+
     pass
 
 
 class VacancyUpdate(BaseModel):
     """Схема обновления вакансии"""
+
     title: str | None = None
     description: str | None = None
     direction: str | None = Field(None, max_length=100)
@@ -40,10 +43,8 @@ class VacancyUpdate(BaseModel):
     recruiter_id: int | None = None
 
 
-
-
 class VacancyResponse(VacancyBase):
     """Схема вакансии из БД"""
+
     id: int
     recruiter_id: int
-

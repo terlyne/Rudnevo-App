@@ -6,9 +6,9 @@ from app.models.base import Base
 from app.db.custom_types import str_null_false
 
 
-
 class Schedule(Base):
     """Модель расписания"""
+
     __tablename__ = "schedules"
 
     title: Mapped[str] = mapped_column(String(200))

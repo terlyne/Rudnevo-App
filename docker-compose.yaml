@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: rudnevo
+      POSTGRES_USER: rudnevo_user
+      POSTGRES_PASSWORD: strong_password_here
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg2://rudnevo_user:strong_password_here@db:5432/rudnevo
+      # Добавь другие переменные окружения (секреты, SMTP и т.д.)
+      SECRET_KEY: "change_this_secret"
+    volumes:
+      - ./backend/media:/app/media
+    ports:
+      - "8000:8000"
+    restart: always
+
+  admin-panel:
+    build:
+      context: ./admin-panel
+    depends_on:
+      - backend
+    environment:
+      API_URL: http://backend:8000
+      SECRET_KEY: "change_this_secret"
+      # Flask-WTF CSRF secret, etc.
+    ports:
+      - "5000:5000"
+    restart: always
+
+volumes:
+  postgres_data:

@@ -7,8 +7,10 @@ from app.db.custom_types import (
     int_pk,
 )
 
+
 class Action(Base):
     """Модель событий"""
+
     __tablename__ = "actions"
 
     username: Mapped[str] = mapped_column(String(50))

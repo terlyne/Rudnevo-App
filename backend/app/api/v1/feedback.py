@@ -16,7 +16,7 @@ async def read_feedbacks(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Получить список обратной связи (только для администраторов)"""
     return await feedback_crud.get_feedbacks(db, skip=skip, limit=limit)
@@ -24,9 +24,7 @@ async def read_feedbacks(
 
 @router.post("/", response_model=FeedbackInDB)
 async def create_feedback(
-    *,
-    db: AsyncSession = Depends(get_async_session),
-    feedback_in: FeedbackCreate
+    *, db: AsyncSession = Depends(get_async_session), feedback_in: FeedbackCreate
 ):
     """Создать обратную связь"""
     return await feedback_crud.create_feedback(db=db, feedback_in=feedback_in)
@@ -44,17 +42,16 @@ async def respond_to_feedback(
     feedback = await feedback_crud.get_feedback(db=db, feedback_id=feedback_id)
     if not feedback:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Вопрос не найден."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Вопрос не найден."
         )
-    
+
     # Отправляем ответ на email
     await send_feedback_response(
         email_to=feedback.email,
         name=feedback.name,
-        response_text=response.response_text
+        response_text=response.response_text,
     )
-    
+
     return {"ok": True}
 
 
@@ -62,12 +59,11 @@ async def respond_to_feedback(
 async def delete_feedback(
     feedback_id: int,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Удалить обратную связь (только для администраторов)"""
     if not await feedback_crud.delete_feedback(db=db, feedback_id=feedback_id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Вопрос не найден."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Вопрос не найден."
         )
     return {"ok": True}

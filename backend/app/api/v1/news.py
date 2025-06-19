@@ -26,10 +26,7 @@ async def read_news(
     # Для администраторов показываем все новости (включая скрытые)
     show_hidden = current_user.is_superuser
     return await news_crud.get_news_list(
-        db,
-        skip=skip,
-        limit=limit,
-        show_hidden=show_hidden
+        db, skip=skip, limit=limit, show_hidden=show_hidden
     )
 
 
@@ -44,28 +41,19 @@ async def read_hidden_news(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
-    
-    return await news_crud.get_news_list(
-        db,
-        skip=skip,
-        limit=limit,
-        show_hidden=True
-    )
+
+    return await news_crud.get_news_list(db, skip=skip, limit=limit, show_hidden=True)
 
 
 @router.get("/{news_id}", response_model=NewsInDB)
-async def get_news_by_id(
-    news_id: int,
-    db: AsyncSession = Depends(get_async_session)
-):
+async def get_news_by_id(news_id: int, db: AsyncSession = Depends(get_async_session)):
     """Получить новость по ID"""
     news = await news_crud.get_news(db, news_id)
     if not news:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Новость не найдена."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
         )
     return news
 
@@ -84,21 +72,18 @@ async def create_news_item(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
-    
+
     # Сохраняем изображение, если оно предоставлено
     image_url = None
     if image:
         image_url = await save_image(image, "news")
-    
+
     news_in = NewsCreate(
-        title=title,
-        content=content,
-        image_url=image_url,
-        is_hidden=is_hidden
+        title=title, content=content, image_url=image_url, is_hidden=is_hidden
     )
-    
+
     return await news_crud.create_news(db=db, news_in=news_in)
 
 
@@ -117,26 +102,22 @@ async def update_news_item(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
-    
+
     # Сохраняем новое изображение, если оно предоставлено
     image_url = None
     if image:
         image_url = await save_image(image, "news")
-    
+
     news_update = NewsUpdate(
-        title=title,
-        content=content,
-        image_url=image_url,
-        is_hidden=is_hidden
+        title=title, content=content, image_url=image_url, is_hidden=is_hidden
     )
-    
+
     news = await news_crud.update_news(db=db, news_id=news_id, news_in=news_update)
     if not news:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Новость не найдена."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
         )
     return news
 
@@ -152,12 +133,11 @@ async def delete_news_item(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     if not await news_crud.delete_news(db=db, news_id=news_id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Новость не найдена."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
         )
     return {"ok": True}
 
@@ -173,44 +153,37 @@ async def toggle_news_visibility(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     news = await news_crud.toggle_news_visibility(db=db, news_id=news_id)
     if not news:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Новость не найдена."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
         )
     return news
 
 
 @router.get("/{news_id}/image")
-async def get_news_image(
-    news_id: int,
-    db: AsyncSession = Depends(get_async_session)
-):
+async def get_news_image(news_id: int, db: AsyncSession = Depends(get_async_session)):
     """Получить изображение новости по ID"""
     news = await news_crud.get_news(db, news_id)
     if not news:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Новость не найдена."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
         )
-    
+
     if not news.image_url:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="У новости нет изображения."
+            status_code=status.HTTP_404_NOT_FOUND, detail="У новости нет изображения."
         )
-    
+
     # Получаем путь к файлу из URL
     # URL имеет формат /media/news/filename.ext
     image_path = os.path.join(settings.MEDIA_ROOT, news.image_url.lstrip("/media/"))
-    
+
     if not os.path.exists(image_path):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Изображение не найдено."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Изображение не найдено."
         )
-    
+
     return FileResponse(image_path)

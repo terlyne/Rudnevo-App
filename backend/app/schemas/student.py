@@ -6,6 +6,7 @@ from app.models.student import ApplicationStatus
 
 class StudentBase(BaseModel):
     """Базовая схема студента"""
+
     full_name: str = Field(max_length=200)
     birth_date: date
     speciality: str = Field(max_length=200)
@@ -16,6 +17,7 @@ class StudentBase(BaseModel):
 
 class StudentCreate(BaseModel):
     """Схема создания заявки студента"""
+
     full_name: str = Field(max_length=200)
     birth_date: date
     speciality: str = Field(max_length=200)
@@ -28,6 +30,7 @@ class StudentCreate(BaseModel):
 
 class StudentUpdate(BaseModel):
     """Схема обновления студента"""
+
     full_name: str | None = Field(None, max_length=200)
     birth_date: date | None = None
     speciality: str | None = Field(None, max_length=200)
@@ -39,6 +42,7 @@ class StudentUpdate(BaseModel):
 
 class StudentResponse(StudentBase):
     """Схема студента из БД"""
+
     id: int
     status: ApplicationStatus
     vacancy_id: int
@@ -46,5 +50,6 @@ class StudentResponse(StudentBase):
 
 class StudentBulkStatusUpdate(BaseModel):
     """Схема массового обновления статусов"""
+
     student_ids: list[int]
     status: ApplicationStatus

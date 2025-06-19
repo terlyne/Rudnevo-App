@@ -12,9 +12,7 @@ router = APIRouter()
 
 @router.get("/", response_model=list[ScheduleInDB])
 async def read_schedules(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_async_session)
+    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_async_session)
 ):
     """Получить список расписаний"""
     return await schedule_crud.get_schedules(db, skip=skip, limit=limit)
@@ -31,7 +29,7 @@ async def create_schedule(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     return await schedule_crud.create_schedule(db=db, schedule_in=schedule_in)
 
@@ -48,17 +46,14 @@ async def update_schedule(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     schedule = await schedule_crud.update_schedule(
-        db=db,
-        schedule_id=schedule_id,
-        schedule_in=schedule_in
+        db=db, schedule_id=schedule_id, schedule_in=schedule_in
     )
     if not schedule:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Расписание не найдено."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Расписание не найдено."
         )
     return schedule
 
@@ -74,11 +69,10 @@ async def delete_schedule(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала."
+            detail="У вас нет прав на выполнение данного функционала.",
         )
     if not await schedule_crud.delete_schedule(db=db, schedule_id=schedule_id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Расписание не найдено."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Расписание не найдено."
         )
     return {"ok": True}

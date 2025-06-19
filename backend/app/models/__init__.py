@@ -17,4 +17,4 @@ __all__ = [
     "Vacancy",
     "Student",
     "ApplicationStatus",
-] 
+]

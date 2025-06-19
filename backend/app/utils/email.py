@@ -16,7 +16,7 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
-    TEMPLATE_FOLDER=Path(__file__).parent / "email-templates"
+    TEMPLATE_FOLDER=Path(__file__).parent / "email-templates",
 )
 
 fastmail = FastMail(conf)
@@ -25,7 +25,7 @@ fastmail = FastMail(conf)
 async def send_registration_email(email_to: EmailStr, token: str) -> None:
     """Отправка email с приглашением для регистрации"""
     registration_url = f"{settings.FRONTEND_URL}/register?token={token}"
-    
+
     message = MessageSchema(
         subject="Приглашение для регистрации",
         recipients=[email_to],
@@ -42,20 +42,16 @@ async def send_registration_email(email_to: EmailStr, token: str) -> None:
             С уважением,
             Команда {settings.PROJECT_NAME}
         """,
-        subtype="plain"
+        subtype="plain",
     )
-    
+
     await fastmail.send_message(message)
 
 
-async def send_reset_password_email(
-    email_to: str,
-    token: str,
-    username: str
-) -> None:
+async def send_reset_password_email(email_to: str, token: str, username: str) -> None:
     """Отправить email для сброса пароля"""
     reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-    
+
     message = MessageSchema(
         subject="Сброс пароля",
         recipients=[email_to],
@@ -69,17 +65,13 @@ async def send_reset_password_email(
         
         Ссылка действительна в течение 24 часов.
         """,
-        subtype="plain"
+        subtype="plain",
     )
-    
+
     await fastmail.send_message(message)
 
 
-async def send_feedback_response(
-    email_to: str,
-    name: str,
-    response_text: str
-) -> None:
+async def send_feedback_response(email_to: str, name: str, response_text: str) -> None:
     """Отправить ответ на обратную связь"""
     message = MessageSchema(
         subject="Ответ на ваше обращение",
@@ -94,7 +86,7 @@ async def send_feedback_response(
         С уважением,
         Администрация
         """,
-        subtype="plain"
+        subtype="plain",
     )
-    
+
     await fastmail.send_message(message)

@@ -113,7 +113,7 @@
                                     {% if student.resume_file %}
                                     <div class="detail-row">
                                         <span class="detail-label">Файл резюме:</span>
-                                        <a href="/media/{{ student.resume_file }}" target="_blank" class="detail-link">
+                                        <a href="{{ panel.student_resume_file }}" target="_blank" class="detail-link">
                                             Скачать резюме
                                         </a>
                                     </div>

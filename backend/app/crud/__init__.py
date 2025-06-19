@@ -9,11 +9,11 @@ from app.crud import student
 
 __all__ = [
     "user",
-    "news", 
+    "news",
     "review",
     "feedback",
     "schedule",
     "action",
     "vacancy",
     "student",
-] 
+]

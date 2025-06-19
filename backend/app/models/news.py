@@ -7,8 +7,10 @@ from app.db.custom_types import (
     updated_at,
 )
 
+
 class News(Base):
     """Модель новости"""
+
     __tablename__ = "news"
 
     title: Mapped[str] = mapped_column(String(200))

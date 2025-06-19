@@ -6,53 +6,53 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     # Основные настройки
-    PROJECT_NAME: str = "Rudnevo API"
-    VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
-    SERVER_HOST: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5000"
-    
+    PROJECT_NAME: str
+    VERSION: str
+    API_V1_STR: str
+    SERVER_HOST: str
+    FRONTEND_URL: str
+
     # Настройки администратора
-    ADMIN_EMAIL: EmailStr = "sheyynovd@gmail.com"
-    
+    ADMIN_EMAIL: EmailStr
+
     # Настройки базы данных
-    POSTGRES_SERVER: str = "db"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "rudnevo_db"
+    POSTGRES_SERVER: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
     SQLALCHEMY_DATABASE_URI: PostgresDsn | None = None
-    DB_ECHO: bool = False
+    DB_ECHO: bool
 
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     def assemble_db_connection(cls, v: str | None, info: Any) -> Any:
         if isinstance(v, str):
             return v
-        
+
         values = info.data
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
             username=values.get("POSTGRES_USER"),
             password=values.get("POSTGRES_PASSWORD"),
             host=values.get("POSTGRES_SERVER"),
-            path=values.get('POSTGRES_DB') or ''
+            path=values.get("POSTGRES_DB") or "",
         )
 
     # Настройки JWT
-    SECRET_KEY: str = "your-secret-key-for-jwt-here" # Изменить при деплое!!!!!
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
-    
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+
     # Настройки почты
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: EmailStr
-    MAIL_PORT: int = 587
-    MAIL_SERVER: str = "smtp.gmail.com"
-    MAIL_STARTTLS: bool = True
-    MAIL_SSL_TLS: bool = False
-    MAIL_USE_CREDENTIALS: bool = True
-    MAIL_VALIDATE_CERTS: bool = True
-    
+    MAIL_PORT: int
+    MAIL_SERVER: str
+    MAIL_STARTTLS: bool
+    MAIL_SSL_TLS: bool
+    MAIL_USE_CREDENTIALS: bool
+    MAIL_VALIDATE_CERTS: bool
+
     # Настройки медиафайлов
     MEDIA_ROOT: Path = Path("media")
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
@@ -61,12 +61,11 @@ class Settings(BaseSettings):
         "image/jpeg",
         "image/png",
         "image/gif",
-        "image/webp"
+        "image/webp",
     }
     ALLOWED_RESUME_TYPES: set[str] = {
         # PDF документы
         "application/pdf",
-        
         # Microsoft Office документы
         "application/msword",  # .doc
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
@@ -74,26 +73,22 @@ class Settings(BaseSettings):
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
         "application/vnd.ms-powerpoint",  # .ppt
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # .pptx
-        
         # Текстовые форматы
         "text/plain",  # .txt
         "text/rtf",  # .rtf
         "text/html",  # .html, .htm
         "text/markdown",  # .md
-        
         # OpenDocument форматы
         "application/vnd.oasis.opendocument.text",  # .odt
         "application/vnd.oasis.opendocument.spreadsheet",  # .ods
         "application/vnd.oasis.opendocument.presentation",  # .odp
-        
         # Другие популярные форматы
         "application/rtf",  # .rtf (альтернативный MIME тип)
         "application/x-rtf",  # .rtf (еще один альтернативный MIME тип)
     }
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
-
+    CORS_ORIGINS: list[str]
 
     @field_validator("SQLALCHEMY_DATABASE_URI")
     def validate_database_url(cls, v: str | None) -> str:
@@ -110,9 +105,7 @@ class Settings(BaseSettings):
         return v
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True
     )
 
 

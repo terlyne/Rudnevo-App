@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ScheduleBase(BaseModel):
     """Базовая схема расписания"""
+
     title: str
     shift_number: int
     description: str | None = None
@@ -15,11 +16,13 @@ class ScheduleBase(BaseModel):
 
 class ScheduleCreate(ScheduleBase):
     """Схема создания расписания"""
+
     pass
 
 
 class ScheduleUpdate(BaseModel):
     """Схема обновления расписания"""
+
     title: str | None = None
     shift_number: int | None = None
     description: str | None = None
@@ -31,6 +34,7 @@ class ScheduleUpdate(BaseModel):
 
 class ScheduleInDB(ScheduleBase):
     """Схема расписания из БД"""
+
     id: int
 
     model_config = ConfigDict(from_attributes=True)
