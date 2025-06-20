@@ -1,6 +1,6 @@
 from flask import request, redirect, url_for, session
 from functools import wraps
-from api.client import api_client
+from app.api.client import api_client
 
 
 def login_required(f):

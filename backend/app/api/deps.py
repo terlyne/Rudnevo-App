@@ -49,6 +49,11 @@ async def get_current_active_user(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Неактивный пользователь."
         )
     
+    # Супер-пользователи могут использовать любой функционал
+    if current_user.is_superuser:
+        return current_user
+    
+    # Обычные рекрутеры не могут использовать админский функционал
     if current_user.is_recruiter:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на использование данного функционала."
@@ -67,6 +72,19 @@ async def get_current_active_recruiter(
         )
     
     return current_user
+
+
+
+async def get_current_active_recruiter_or_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Получить текущего пользователя (активного)"""
+    if current_user.is_recruiter or current_user.is_registered:
+        return current_user
+    
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на использование данного функционала."
+    )
 
 
 async def get_current_superuser(

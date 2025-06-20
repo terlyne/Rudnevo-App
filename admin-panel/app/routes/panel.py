@@ -3,8 +3,8 @@ import io
 from datetime import datetime
 import logging
 
-from api.client import api_client, AuthenticationError, ValidationError, APIError
-from utils.panel import get_navigation_elements, login_required
+from app.api.client import api_client, ValidationError, APIError, PermissionError
+from app.utils.panel import get_navigation_elements, login_required
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,10 @@ panel = Blueprint("panel", __name__, template_folder="templates")
 def home():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        last_actions = api_client.get_actions()
+        try:
+            last_actions = api_client.get_actions()
+        except PermissionError:
+            return(redirect(url_for("panel.vacancies_list")))
         return render_template(
             "panel/home.html", nav_elements=nav_elements, last_actions=last_actions
         )

@@ -50,6 +50,9 @@
                     <label for="speciality">Специальность/профессия *</label>
                     <select id="speciality" name="speciality" required>
                         <option value="">Выберите специальность</option>
+                        {% if vacancy and vacancy.speciality %}
+                        <option value="{{ vacancy.speciality }}" selected>{{ vacancy.speciality }}</option>
+                        {% endif %}
                     </select>
                 </div>
             </div>

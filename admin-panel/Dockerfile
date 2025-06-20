@@ -10,6 +10,8 @@ RUN pip install --upgrade pip && \
 
 COPY app ./app
 
+RUN printenv
+
 EXPOSE 5000
 
 CMD ["flask", "--app", "app.run", "run", "--host=0.0.0.0", "--port=5000"]

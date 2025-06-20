@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_active_user, get_current_active_recruiter_or_user
 from app.crud import user as user_crud
 from app.db.session import get_async_session
 from app.models.user import User
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=UserInDB)
-async def read_user_me(current_user: User = Depends(get_current_active_user)):
+async def read_user_me(current_user: User = Depends(get_current_active_recruiter_or_user)):
     """Получить текущего пользователя"""
     return current_user
 

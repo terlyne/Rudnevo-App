@@ -1,9 +1,9 @@
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 
-from routes.auth import auth
-from routes.panel import panel
-from core.config import settings
+from app.routes.auth import auth
+from app.routes.panel import panel
+from app.core.config import settings
 
 
 app = Flask(__name__)

@@ -91,24 +91,6 @@ form.addEventListener('submit', function (e) {
     hideDateError();
 });
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function () {
-    // Если есть значения дат, устанавливаем ограничения
-    if (startDateInput.value) {
-        endDateInput.min = startDateInput.value;
-    }
-    if (endDateInput.value) {
-        startDateInput.max = endDateInput.value;
-    }
-
-    // Проверяем валидность существующих дат
-    if (startDateInput.value && endDateInput.value) {
-        if (startDateInput.value >= endDateInput.value) {
-            showDateError('Дата начала должна быть раньше даты окончания');
-        }
-    }
-});
-
 // Данные по направлениям и специальностям
 const specialityOptions = {
     'Электроника': [
@@ -143,25 +125,71 @@ const specialityOptions = {
 const directionSelect = document.getElementById('direction');
 const specialitySelect = document.getElementById('speciality');
 
+// Получаем значения из вакансии (если редактируем)
 const selectedSpeciality = "{{ vacancy.speciality if vacancy and vacancy.speciality else '' }}";
+const selectedDirection = "{{ vacancy.direction if vacancy and vacancy.direction else '' }}";
+
+console.log('Raw selectedSpeciality:', selectedSpeciality);
+console.log('Raw selectedDirection:', selectedDirection);
 
 function updateSpecialities() {
     const direction = directionSelect.value;
     const specs = specialityOptions[direction] || [];
+    
+    console.log('Updating specialities for direction:', direction);
+    console.log('Available specs:', specs);
+    console.log('Selected speciality:', selectedSpeciality);
+    
+    // Сохраняем текущее выбранное значение
+    const currentValue = specialitySelect.value;
+    
     specialitySelect.innerHTML = '<option value="">Выберите специальность</option>';
+    
     specs.forEach(spec => {
         const option = document.createElement('option');
         option.value = spec;
         option.textContent = spec;
-        if (spec === selectedSpeciality) {
+        
+        // Сравниваем специальности (без учета регистра и пробелов)
+        const normalizedSpec = spec.trim().toLowerCase();
+        const normalizedSelected = selectedSpeciality.trim().toLowerCase();
+        const normalizedCurrent = currentValue.trim().toLowerCase();
+        
+        // Выбираем опцию, если она совпадает с сохраненным значением или с значением из вакансии
+        if (normalizedSpec === normalizedSelected || normalizedSpec === normalizedCurrent) {
             option.selected = true;
+            console.log('Found matching speciality:', spec);
         }
+        
         specialitySelect.appendChild(option);
     });
 }
 
+// Обработчик изменения направления
 directionSelect.addEventListener('change', updateSpecialities);
 
+// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM loaded');
+    console.log('Initial direction value:', directionSelect.value);
+    console.log('Selected direction from vacancy:', selectedDirection);
+    console.log('Selected speciality from vacancy:', selectedSpeciality);
+    
+    // Если есть значения дат, устанавливаем ограничения
+    if (startDateInput.value) {
+        endDateInput.min = startDateInput.value;
+    }
+    if (endDateInput.value) {
+        startDateInput.max = endDateInput.value;
+    }
+
+    // Проверяем валидность существующих дат
+    if (startDateInput.value && endDateInput.value) {
+        if (startDateInput.value >= endDateInput.value) {
+            showDateError('Дата начала должна быть раньше даты окончания');
+        }
+    }
+    
+    // Инициализируем специальности
     updateSpecialities();
 });

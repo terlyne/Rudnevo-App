@@ -15,6 +15,8 @@ COPY app ./app
 # Создаем директорию для медиафайлов
 RUN mkdir -p /app/media
 
+RUN printenv
+
 # Открываем порт
 EXPOSE 8000
 

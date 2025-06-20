@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from datetime import timedelta
+import uvicorn
 
 from app.core.config import settings
 from app.api.v1 import api_router
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI):
             user_in = UserCreate(
                 email=settings.ADMIN_EMAIL,
                 is_superuser=True,
-                is_recruiter=True,
+                is_recruiter=True,  # Супер-пользователь должен иметь все права
             )
             admin = await create_user(session, user_in)
 
@@ -90,3 +91,7 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # Подключаем роутеры
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0")

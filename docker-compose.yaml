@@ -5,9 +5,9 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: rudnevo
+      POSTGRES_DB: rudnevo_db
       POSTGRES_USER: rudnevo_user
-      POSTGRES_PASSWORD: strong_password_here
+      POSTGRES_PASSWORD: "N-5itQCThk7WFOVqdCwFhH9hnsAMOclw"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -16,12 +16,10 @@ services:
   backend:
     build:
       context: ./backend
+    env_file:
+      - ./backend/.env
     depends_on:
       - db
-    environment:
-      DATABASE_URL: postgresql+psycopg2://rudnevo_user:strong_password_here@db:5432/rudnevo
-      # Добавь другие переменные окружения (секреты, SMTP и т.д.)
-      SECRET_KEY: "change_this_secret"
     volumes:
       - ./backend/media:/app/media
     ports:
@@ -33,10 +31,8 @@ services:
       context: ./admin-panel
     depends_on:
       - backend
-    environment:
-      API_URL: http://backend:8000
-      SECRET_KEY: "change_this_secret"
-      # Flask-WTF CSRF secret, etc.
+    env_file:
+      - ./admin-panel/.env
     ports:
       - "5000:5000"
     restart: always
