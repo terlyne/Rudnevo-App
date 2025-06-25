@@ -554,5 +554,26 @@ class APIClient:
             logger.error(f"Network error during file download: {str(e)}")
             raise APIError(f"Ошибка сети при скачивании файла: {str(e)}")
 
+    def change_password(self, current_password: str, new_password: str) -> dict[str, any]:
+        """Смена пароля текущего пользователя"""
+        url = f"{settings.API_URL}/api/v1/password/change-password"
+        data = {
+            "current_password": current_password,
+            "new_password": new_password,
+        }
+        try:
+            response = requests.post(
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            return response.json()
+        except RequestException as e:
+            logger.error(f"Network error during password change: {str(e)}")
+            raise APIError(f"Ошибка сети при смене пароля: {str(e)}")
+
 
 api_client = APIClient(settings.API_URL)

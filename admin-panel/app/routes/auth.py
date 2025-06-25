@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for
+from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify
 import logging
 
 from app.api.client import api_client, AuthenticationError, ValidationError, APIError
@@ -118,22 +118,17 @@ def forgot_password():
         return render_template("auth/forgot_password.html")
 
     if request.method == "POST":
+        email = request.form.get("email")
+        if not email:
+            flash("Email обязателен для заполнения.", category="error")
+            return redirect(url_for("auth.forgot_password"))
         try:
-            email = request.form.get("email")
-            if not email:
-                flash("Email обязателен для заполнения.", category="error")
-                return redirect(url_for("auth.forgot_password"))
-
-            api_client.forgot_password(
-                email=email,
-            )
-
+            api_client.forgot_password(email=email)
             flash(
-                "Если пользователь с таким email существует, то на эту почту была отправлена ссылка для изменения пароля",
-                category="success",
+                "Если пользователь с таким email существует, на почту была отправлена ссылка для изменения пароля",
+                category="success"
             )
             return redirect(url_for("auth.login"))
-
         except ValidationError as e:
             flash(str(e), category="error")
             return redirect(url_for("auth.forgot_password"))
@@ -142,71 +137,81 @@ def forgot_password():
             return redirect(url_for("auth.forgot_password"))
 
 
-@auth.route("/reset-password", methods=["GET", "POST"])
-def reset_password():
+
+@auth.route("/change-password", methods=["GET", "POST"])
+def change_password():
     if request.method == "GET":
-        # Получаем токен из URL параметра при GET запросе
-        token = request.args.get("token", "")
-        logger.debug(
-            f"GET reset-password: Received token (length: {len(token)}): {token}"
-        )
-
-        if not token or len(token.strip()) == 0:
-            logger.warning("GET reset-password: Token is missing or empty")
-            flash(
-                "Для сброса пароля необходим токен. Проверьте ссылку в письме.",
-                category="error",
-            )
-            return redirect(url_for("auth.login"))
-
-        return render_template("auth/reset_password.html", token=token)
+        return render_template("auth/change_password.html")
 
     if request.method == "POST":
         try:
-            # При POST запросе получаем токен из формы
-            token = request.form.get("token", "")
-            new_password = request.form.get("new_password")
-            confirm_password = request.form.get("confirm-password")
+            current_password = request.form.get("current-password")
+            new_password = request.form.get("new-password")
+            confirm_password = request.form.get("confirm-new-password")
 
-            logger.debug(f"POST reset-password: Processing password reset request")
-
-            if not token or len(token.strip()) == 0:
-                logger.warning(
-                    "POST reset-password: Token is missing or empty in form data"
-                )
-                flash("Отсутствует токен для сброса пароля.", category="error")
-                return redirect(url_for("auth.login"))
-
-            if not new_password:
-                flash("Новый пароль обязателен для заполнения.", category="error")
-                return redirect(url_for("auth.reset_password", token=token))
-
+            if not all([current_password, new_password, confirm_password]):
+                flash("Все поля обязательны для заполнения", category="error")
+                return redirect(url_for("auth.change_password"))
             if new_password != confirm_password:
-                flash("Пароли не совпадают.", category="error")
-                return redirect(url_for("auth.reset_password", token=token))
-
+                flash("Пароли не совпадают", category="error")
+                return redirect(url_for("auth.change_password"))
             if len(new_password) < 8:
-                flash("Пароль должен содержать минимум 8 символов.", category="error")
-                return redirect(url_for("auth.reset_password", token=token))
+                flash("Пароль должен содержать минимум 8 символов", category="error")
+                return redirect(url_for("auth.change_password"))
 
-            # Отправляем запрос на сброс пароля
-            api_client.reset_password(token=token, new_password=new_password)
-
-            flash("Пароль успешно изменен", category="success")
+            api_client.change_password(
+                current_password=current_password,
+                new_password=new_password,
+            )
+            api_client.logout()
+            flash("Пароль успешно изменён. Пожалуйста, войдите снова", category="success")
             return redirect(url_for("auth.login"))
-
         except ValidationError as e:
-            logger.error(f"Validation error during password reset: {str(e)}")
             flash(str(e), category="error")
-            return redirect(url_for("auth.reset_password", token=token))
+            return redirect(url_for("auth.change_password"))
         except APIError as e:
-            logger.error(f"API error during password reset: {str(e)}")
             flash(str(e), category="error")
-            return redirect(url_for("auth.reset_password", token=token))
+            return redirect(url_for("auth.change_password"))
 
 
 @auth.route("/logout")
 def logout():
     api_client.logout()
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'redirect': url_for('auth.login')})
     flash("Вы вышли из системы", category="success")
     return redirect(url_for("auth.login"))
+
+
+@auth.route("/reset-password", methods=["GET", "POST"])
+def reset_password():
+    token = request.args.get("token") if request.method == "GET" else request.form.get("token")
+    if not token:
+        flash("Некорректная или устаревшая ссылка для сброса пароля.", category="error")
+        return redirect(url_for("auth.login"))
+
+    if request.method == "GET":
+        return render_template("auth/reset_password.html", token=token)
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm-password")
+        if not new_password or not confirm_password:
+            flash("Все поля обязательны для заполнения.", category="error")
+            return redirect(url_for("auth.reset_password", token=token))
+        if new_password != confirm_password:
+            flash("Пароли не совпадают.", category="error")
+            return redirect(url_for("auth.reset_password", token=token))
+        if len(new_password) < 8:
+            flash("Пароль должен содержать минимум 8 символов.", category="error")
+            return redirect(url_for("auth.reset_password", token=token))
+        try:
+            api_client.reset_password(token=token, new_password=new_password)
+            flash("Пароль успешно изменён. Теперь вы можете войти.", category="success")
+            return redirect(url_for("auth.login"))
+        except ValidationError as e:
+            flash(str(e), category="error")
+            return redirect(url_for("auth.reset_password", token=token))
+        except APIError as e:
+            flash(str(e), category="error")
+            return redirect(url_for("auth.reset_password", token=token))

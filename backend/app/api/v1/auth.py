@@ -137,3 +137,11 @@ async def invite_user(
     await send_registration_email(email_to=user.email, token=token)
 
     return user
+
+
+@router.post("/logout")
+async def logout():
+    """
+Выход из системы. Клиент должен удалить токен авторизации.
+"""
+    return {"message": "Вы успешно вышли из системы. Пожалуйста, удалите токен авторизации на клиенте."}
