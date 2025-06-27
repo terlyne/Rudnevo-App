@@ -218,29 +218,52 @@ class APIClient:
             logger.error(f"Network error during password reset: {str(e)}")
             raise APIError("Ошибка сети при сбросе пароля")
 
-    def invite_user(self, email: str) -> dict[str, any]:
-        """Пригласить нового пользователя (требуется токен суперпользователя)"""
-        if not self.token:
-            raise AuthenticationError("Требуется аутентификация суперпользователя")
-
-        url = f"{settings.API_URL}/api/v1/auth/invite"
-        data = {"email": email}
+    def invite_user(self, email: str, is_recruiter: bool = False) -> dict[str, any]:
+        """Пригласить пользователя"""
+        url = f"{settings.API_URL}/api/v1/users/invite"
+        data = {
+            "email": email,
+            "is_recruiter": is_recruiter,
+        }
 
         try:
-            logger.debug(f"Attempting to invite user: {email}")
             response = requests.post(
-                url, json=data, headers=self.headers, timeout=self.timeout
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout,
             )
 
             if response.status_code != 200:
                 self._handle_error_response(response)
 
-            logger.debug("Invitation sent successfully")
             return response.json()
 
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке отправки приглашения: {str(e)}")
+            raise APIError(f"Ошибка сети при приглашении пользователя: {str(e)}")
+
+    def resend_invite(self, email: str) -> dict[str, any]:
+        """Повторно отправить приглашение пользователю"""
+        url = f"{settings.API_URL}/api/v1/users/resend-invite"
+        data = {
+            "email": email,
+        }
+
+        try:
+            response = requests.post(
+                url,
+                json=data,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            return response.json()
+
+        except RequestException as e:
+            raise APIError(f"Ошибка сети при повторной отправке приглашения: {str(e)}")
 
     def get_current_user(self) -> dict[str, any]:
         """Получить информацию о пользователе, зашедшего в админ-панель"""
@@ -339,7 +362,7 @@ class APIClient:
             logger.error(f"Network error during invitation: {str(e)}")
             raise APIError(f"Ошибка сети при попытке получения событий: {str(e)}")
 
-    def get(self, uri: str):
+    def get(self, uri: str, params: dict = None):
         if not self.token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
@@ -350,6 +373,7 @@ class APIClient:
             response = requests.get(
                 url,
                 headers=self.headers,
+                params=params,
                 timeout=self.timeout,
             )
 
@@ -555,12 +579,13 @@ class APIClient:
             raise APIError(f"Ошибка сети при скачивании файла: {str(e)}")
 
     def change_password(self, current_password: str, new_password: str) -> dict[str, any]:
-        """Смена пароля текущего пользователя"""
-        url = f"{settings.API_URL}/api/v1/password/change-password"
+        """Смена пароля"""
+        url = f"{settings.API_URL}/api/v1/password/change"
         data = {
             "current_password": current_password,
             "new_password": new_password,
         }
+
         try:
             response = requests.post(
                 url,
@@ -568,12 +593,270 @@ class APIClient:
                 headers=self.headers,
                 timeout=self.timeout,
             )
+
+            if response.status_code != 200:
+                self._handle_error_response(response)
+
+            return response.json()
+
+        except RequestException as e:
+            raise APIError(f"Ошибка сети при смене пароля: {str(e)}")
+
+    # Методы для работы с новостями
+    def get_news(self, show_hidden: bool = False) -> list[dict[str, any]]:
+        """Получить список новостей"""
+        params = {}
+        if show_hidden:
+            params["show_hidden"] = "true"
+        return self.get("/news", params=params)
+
+    def get_news_by_id(self, news_id: int) -> dict[str, any]:
+        """Получить новость по ID"""
+        return self.get_by_id("/news", news_id)
+
+    def create_news(self, **data) -> dict[str, any]:
+        """Создать новость"""
+        url = f"{settings.API_URL}/api/v1/news/"
+        
+        try:
+            logger.debug(f"Attempting to create news with data: {data}")
+            
+            # Подготавливаем данные для multipart/form-data
+            files = {}
+            form_data = {}
+            
+            # Обрабатываем изображение, если оно передано
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                    
+            # Все остальные данные
+            for key, value in data.items():
+                if value is not None:
+                    form_data[key] = str(value)
+            
+            # Копируем заголовки и удаляем Content-Type
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            # Если нет файлов, отправляем как обычные form-data
+            if not files:
+                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = requests.post(
+                    url,
+                    data=form_data,
+                    headers=headers,
+                    timeout=self.timeout
+                )
+            else:
+                response = requests.post(
+                    url,
+                    files=files,
+                    data=form_data,
+                    headers=headers,
+                    timeout=self.timeout
+                )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+                
+            return response.json()
+            
+        except RequestException as e:
+            logger.error(f"Network error during news creation: {str(e)}")
+            raise APIError(f"Ошибка сети при создании новости: {str(e)}")
+
+
+    def update_news(self, news_id: int, **data) -> dict[str, any]:
+        """Обновить новость с возможностью обновления изображения"""
+        url = f"{settings.API_URL}/api/v1/news/{news_id}"
+        
+        try:
+            logger.debug(f"Attempting to update news {news_id} with data: {data}")
+            
+            files = {}
+            remove_image = data.get('remove_image') == 'true'
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                elif remove_image:
+                    data['remove_image'] = 'true'
+            elif remove_image:
+                data['remove_image'] = 'true'
+            
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            response = requests.put(
+                url,
+                files=files if files else None,
+                data=data,
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+                
+            return response.json()
+            
+        except RequestException as e:
+            logger.error(f"Network error during news update: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке обновления новости: {str(e)}")
+
+    def delete_news(self, news_id: int) -> dict[str, any]:
+        """Удалить новость"""
+        return self.delete(f"/news/{news_id}")
+
+    def toggle_news_visibility(self, news_id: int) -> dict[str, any]:
+        """Переключить видимость новости"""
+        return self.post(f"/news/{news_id}/toggle-visibility")
+
+    # Методы для работы с вопросами (обратная связь)
+    def get_feedbacks(self) -> list[dict[str, any]]:
+        """Получить список вопросов"""
+        return self.get("/feedback")
+
+    def get_feedback_by_id(self, feedback_id: int) -> dict[str, any]:
+        """Получить вопрос по ID"""
+        return self.get_by_id("/feedback", feedback_id)
+
+    def create_feedback(self, **data) -> dict[str, any]:
+        """Создать вопрос"""
+        return self.post("/feedback", **data)
+
+    def respond_to_feedback(self, feedback_id: int, response_text: str) -> dict[str, any]:
+        """Ответить на вопрос"""
+        url = f"{settings.API_URL}/api/v1/feedback/{feedback_id}/respond"
+        data = {"response_text": response_text}
+        try:
+            response = requests.post(url, json=data, headers=self.headers, timeout=self.timeout)
             if response.status_code != 200:
                 self._handle_error_response(response)
             return response.json()
         except RequestException as e:
-            logger.error(f"Network error during password change: {str(e)}")
-            raise APIError(f"Ошибка сети при смене пароля: {str(e)}")
+            raise APIError(f"Ошибка сети при ответе на вопрос: {str(e)}")
+
+    def delete_feedback(self, feedback_id: int) -> dict[str, any]:
+        """Удалить вопрос"""
+        return self.delete(f"/feedback/{feedback_id}")
+
+    # Методы для работы с отзывами
+    def get_reviews(self, show_hidden: bool = False) -> list[dict[str, any]]:
+        """Получить список отзывов"""
+        params = {}
+        if show_hidden:
+            params["show_hidden"] = "true"
+        return self.get("/reviews", params=params)
+
+    def get_review_by_id(self, review_id: int) -> dict[str, any]:
+        """Получить отзыв по ID"""
+        return self.get_by_id("/reviews", review_id)
+
+    def create_review(self, **data) -> dict[str, any]:
+        """Создать отзыв"""
+        return self.post("/reviews", **data)
+
+    def update_review(self, review_id: int, **data) -> dict[str, any]:
+        """Обновить отзыв (только переданные поля)"""
+        update_data = {k: v for k, v in data.items() if v is not None}
+        return self.put(f"/reviews/{review_id}", **update_data)
+
+    def delete_review(self, review_id: int) -> dict[str, any]:
+        """Удалить отзыв"""
+        return self.delete(f"/reviews/{review_id}")
+
+    # Методы для работы с пользователями
+    def get_users(self) -> list[dict[str, any]]:
+        """Получить список пользователей"""
+        return self.get("/users")
+
+    def get_user_by_id(self, user_id: int) -> dict[str, any]:
+        """Получить пользователя по ID"""
+        return self.get_by_id("/users", user_id)
+
+    def delete_user(self, user_id: int) -> dict[str, any]:
+        """Удалить пользователя"""
+        return self.delete(f"/users/{user_id}")
+
+    def update_user(self, user_id: int, **data) -> dict[str, any]:
+        """Обновить пользователя"""
+        return self.put(f"/users/{user_id}", **data)
+
+    def activate_user(self, user_id: int) -> dict[str, any]:
+        """Активировать пользователя"""
+        return self.post(f"/users/{user_id}/activate")
+
+    def deactivate_user(self, user_id: int) -> dict[str, any]:
+        """Деактивировать пользователя"""
+        return self.post(f"/users/{user_id}/deactivate")
+
+    # Методы для работы с расписанием
+    def get_schedules(self) -> list[dict[str, any]]:
+        """Получить список расписаний"""
+        return self.get("/schedules")
+
+    def get_schedule_by_id(self, schedule_id: int) -> dict[str, any]:
+        """Получить расписание по ID"""
+        return self.get_by_id("/schedules", schedule_id)
+
+    def create_schedule(self, **data) -> dict[str, any]:
+        """Создать расписание"""
+        return self.post("/schedules", **data)
+
+    def update_schedule(self, schedule_id: int, **data) -> dict[str, any]:
+        """Обновить расписание"""
+        return self.put(f"/schedules/{schedule_id}", **data)
+
+    def delete_schedule(self, schedule_id: int) -> dict[str, any]:
+        """Удалить расписание"""
+        return self.delete(f"/schedules/{schedule_id}")
+
+    def activate_vacancy(self, vacancy_id: int) -> dict[str, any]:
+        """Активировать вакансию"""
+        return self.post(f"/vacancies/{vacancy_id}/activate")
+
+    def deactivate_vacancy(self, vacancy_id: int) -> dict[str, any]:
+        """Деактивировать вакансию"""
+        return self.post(f"/vacancies/{vacancy_id}/deactivate")
+
+    def approve_application(self, application_id: int) -> dict[str, any]:
+        """Одобрить заявку на вакансию"""
+        return self.post(f"/students/{application_id}/approve")
+
+    def reject_application(self, application_id: int) -> dict[str, any]:
+        """Отклонить заявку на вакансию"""
+        return self.post(f"/students/{application_id}/reject")
+
+    def delete_application(self, application_id: int) -> dict[str, any]:
+        """Удалить заявку на вакансию"""
+        return self.delete(f"/students/{application_id}")
+
+    def approve_review(self, review_id: int) -> dict[str, any]:
+        """Одобрить отзыв"""
+        return self.post(f"/reviews/{review_id}/approve")
+
+    def reject_review(self, review_id: int) -> dict[str, any]:
+        """Отклонить отзыв"""
+        return self.post(f"/reviews/{review_id}/reject")
 
 
 api_client = APIClient(settings.API_URL)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import Optional, Union
 import os
 
 from app.api.deps import get_current_active_user
@@ -19,14 +19,20 @@ router = APIRouter()
 async def read_news(
     skip: int = 0,
     limit: int = 100,
+    show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_active_user),
 ):
     """Получить список новостей"""
-    # Для администраторов показываем все новости (включая скрытые)
-    show_hidden = current_user.is_superuser
+    # Для администраторов показываем все новости (включая скрытые) или по параметру
+    # Для обычных пользователей только видимые новости
+    if current_user.is_superuser:
+        show_hidden_param = show_hidden
+    else:
+        show_hidden_param = False
+    
     return await news_crud.get_news_list(
-        db, skip=skip, limit=limit, show_hidden=show_hidden
+        db, skip=skip, limit=limit, show_hidden=show_hidden_param
     )
 
 
@@ -65,7 +71,7 @@ async def create_news_item(
     title: str = Form(...),
     content: str = Form(...),
     is_hidden: bool = Form(False),
-    image: Optional[UploadFile] = File(None),
+    image: Union[UploadFile, None, str] = File(None),
     current_user: User = Depends(get_current_active_user)
 ):
     """Создать новость с возможностью загрузки изображения (только для администраторов)"""
@@ -74,6 +80,10 @@ async def create_news_item(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="У вас нет прав на выполнение данного функционала.",
         )
+    
+    if isinstance(image, str) and image == "":
+        image = None
+    
 
     # Сохраняем изображение, если оно предоставлено
     image_url = None
@@ -96,6 +106,7 @@ async def update_news_item(
     content: str = Form(None),
     is_hidden: bool = Form(None),
     image: Optional[UploadFile] = File(None),
+    remove_image: str = Form(None),
     current_user: User = Depends(get_current_active_user)
 ):
     """Обновить новость с возможностью обновления изображения (только для администраторов)"""
@@ -109,6 +120,8 @@ async def update_news_item(
     image_url = None
     if image:
         image_url = await save_image(image, "news")
+    elif remove_image == "true":
+        image_url = None
 
     news_update = NewsUpdate(
         title=title, content=content, image_url=image_url, is_hidden=is_hidden

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import Optional, Union
 from datetime import date
 
 from app.api.deps import get_current_active_recruiter
@@ -33,7 +33,7 @@ async def apply_for_vacancy(
         None, description="Ссылка на резюме (опционально)"
     ),
     vacancy_id: int = Form(..., description="ID вакансии"),
-    resume_file: Optional[UploadFile] = File(
+    resume_file: Union[UploadFile, None, str] = File(
         None, description="Файл резюме (опционально)"
     ),
 ):
@@ -45,6 +45,9 @@ async def apply_for_vacancy(
     - И ссылка, и файл
     - Без резюме (оба поля пустые)
     """
+    if isinstance(resume_file, str) and resume_file == "":
+        resume_file = None
+
     # Создаем объект StudentCreate
     student_in = StudentCreate(
         full_name=full_name,

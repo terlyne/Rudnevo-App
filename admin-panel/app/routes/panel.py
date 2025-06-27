@@ -1,10 +1,10 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for, send_file
+from flask import Blueprint, request, render_template, flash, redirect, url_for, send_file, jsonify
 import io
 from datetime import datetime
 import logging
 
 from app.api.client import api_client, ValidationError, APIError, PermissionError
-from app.utils.panel import get_navigation_elements, login_required
+from app.utils.panel import get_navigation_elements, login_required, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,82 @@ panel = Blueprint("panel", __name__, template_folder="templates")
 def home():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
         try:
-            last_actions = api_client.get_actions()
+            # Получаем последние события
+            last_actions = api_client.get_actions(limit=20)
+            
+            # Фильтруем события - исключаем действия пользователей и личного кабинета
+            filtered_actions = []
+            for action in last_actions:
+                action_text = action.get("action", "").lower()
+                if not any(keyword in action_text for keyword in [
+                    "пользователь", "пользователя", "пользователей", 
+                    "профиль", "пароль", "выход", "logout", "войти", "login"
+                ]):
+                    filtered_actions.append(action)
+            filtered_actions = filtered_actions[:10]
+            
+            # Получаем параметр show_hidden из URL
+            show_hidden = request.args.get("show_hidden", "false").lower() == "true"
+            
+            # Получаем статистику
+            stats = {
+                "news_count": 0,
+                "feedback_count": 0,
+                "reviews_count": 0,
+                "users_count": 0
+            }
+            
+            try:
+                if current_user and current_user.get("is_superuser") and show_hidden:
+                    news = api_client.get_news(show_hidden=True)
+                else:
+                    news = api_client.get_news(show_hidden=False)
+                stats["news_count"] = len(news)
+            except:
+                pass
+                
+            try:
+                feedbacks = api_client.get_feedbacks()
+                stats["feedback_count"] = len(feedbacks)
+            except:
+                pass
+                
+            try:
+                if current_user and current_user.get("is_superuser") and show_hidden:
+                    reviews = api_client.get_reviews(show_hidden=True)
+                else:
+                    reviews = api_client.get_reviews(show_hidden=False)
+                stats["reviews_count"] = len(reviews)
+            except:
+                pass
+            
+            if current_user and current_user.get("is_superuser"):
+                try:
+                    users = api_client.get("/users")
+                    stats["users_count"] = len(users)
+                except:
+                    pass
         except PermissionError:
-            return(redirect(url_for("panel.vacancies_list")))
+            return redirect(url_for("panel.vacancies_list"))
+        except Exception as e:
+            logger.error(f"Error loading home page: {str(e)}")
+            filtered_actions = []
+            stats = {
+                "news_count": 0,
+                "feedback_count": 0,
+                "reviews_count": 0,
+                "users_count": 0
+            }
+        
         return render_template(
-            "panel/home.html", nav_elements=nav_elements, last_actions=last_actions
+            "panel/home.html", 
+            nav_elements=nav_elements, 
+            last_actions=filtered_actions,
+            stats=stats,
+            current_user=current_user
         )
 
 
@@ -30,24 +100,115 @@ def home():
 def feedback_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        feedbacks = api_client.get("/feedback")
+        current_user = get_current_user()
+        
+        try:
+            feedbacks = api_client.get_feedbacks()
+            
+            # Форматируем даты
+            for feedback in feedbacks:
+                if "created_at" in feedback:
+                    try:
+                        feedback["created_at"] = datetime.fromisoformat(
+                            feedback["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        feedback["created_at"] = "Неизвестно"
+                
+                if "updated_at" in feedback and feedback["updated_at"]:
+                    try:
+                        feedback["updated_at"] = datetime.fromisoformat(
+                            feedback["updated_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        feedback["updated_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/feedback/feedback_list.html",
+                nav_elements=nav_elements,
+                feedbacks=feedbacks,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading feedback: {str(e)}")
+            flash("Ошибка при загрузке вопросов", category="error")
+            return render_template(
+                "panel/feedback/feedback_list.html",
+                nav_elements=nav_elements,
+                feedbacks=[],
+                current_user=current_user
+            )
 
-        for feedback in feedbacks:
-            if "created_at" in feedback:
-                try:
-                    feedback["created_at"] = datetime.fromisoformat(
-                        feedback["created_at"]
-                    )
-                except (ValueError, TypeError):
-                    feedback["created_at"] = (
-                        datetime.now()
-                    )  # или другое значение по умолчанию
 
-        return render_template(
-            "panel/feedback/feedback_list.html",
-            nav_elements=nav_elements,
-            feedbacks=feedbacks,
-        )
+@panel.route("/feedback/<int:feedback_id>/respond", methods=["POST"], endpoint="feedback_respond")
+@login_required
+def feedback_respond(feedback_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.feedback_list"))
+        
+        # Получаем данные из JSON
+        response_text = request.form.get("response_text")
+        
+        if not response_text:
+            flash("Введите текст ответа", category="error")
+            return redirect(url_for("panel.feedback_list"))
+        
+        # Отправляем ответ
+        result = api_client.respond_to_feedback(feedback_id, response_text)
+        
+        # Создаем событие
+        try:
+            short_text = response_text[:50] + '...' if response_text and len(response_text) > 50 else response_text
+            safe_create_action(current_user.get("username", "Администратор"), f'ответил на вопрос: "{short_text}"')
+        except:
+            pass
+        
+        flash("Ответ успешно отправлен", category="success")
+        api_client.delete_feedback(feedback_id)
+        return redirect(url_for("panel.feedback_list"))
+        
+    except Exception as e:
+        logger.error(f"Error responding to feedback {feedback_id}: {str(e)}")
+        flash("Ошибка при отправке ответа", category="error")
+        return redirect(url_for("panel.feedback_list"))
+
+
+@panel.route("/feedback/<int:feedback_id>/delete", methods=["POST"], endpoint="feedback_delete")
+@login_required
+def feedback_delete(feedback_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.feedback_list"))
+        
+        # Удаляем вопрос
+        try:
+            feedback = api_client.get_feedback_by_id(feedback_id)
+            question = feedback.get('message', '')
+        except Exception:
+            question = ''
+        api_client.delete_feedback(feedback_id)
+        # Создаем событие
+        try:
+            short_question = question[:50] + '...' if question and len(question) > 50 else question
+            action_text = f'удалил вопрос: "{short_question}"'
+            if len(action_text) > 50:
+                action_text = action_text[:47] + '...'
+            safe_create_action(current_user.get("username", "Администратор"), action_text)
+        except:
+            pass
+        
+        flash("Вопрос успешно удален", category="success")
+        return redirect(url_for("panel.feedback_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting feedback {feedback_id}: {str(e)}")
+        flash("Ошибка при удалении вопроса", category="error")
+        return redirect(url_for("panel.feedback_list"))
 
 
 @panel.route("/news", methods=["GET", "POST"], endpoint="news_list")
@@ -55,11 +216,255 @@ def feedback_list():
 def news_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        news = api_client.get("/news")
-        return render_template(
-            "panel/news/news_list.html", nav_elements=nav_elements, news=news
-        )
-    ...
+        current_user = get_current_user()
+        
+        try:
+            # Получаем новости в зависимости от прав пользователя
+            if current_user and current_user.get("is_superuser"):
+                show_hidden = request.args.get("show_hidden", "false").lower() == "true"
+                news = api_client.get_news(show_hidden=show_hidden)
+            else:
+                # Для обычных пользователей только видимые новости
+                news = api_client.get_news(show_hidden=False)
+            
+            # Форматируем даты
+            for news_item in news:
+                if "created_at" in news_item:
+                    try:
+                        news_item["created_at"] = datetime.fromisoformat(
+                            news_item["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        news_item["created_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/news/news_list.html", 
+                nav_elements=nav_elements, 
+                news=news,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading news: {str(e)}")
+            flash("Ошибка при загрузке новостей", category="error")
+            return render_template(
+                "panel/news/news_list.html", 
+                nav_elements=nav_elements, 
+                news=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/news/create", methods=["POST"], endpoint="news_create")
+@login_required
+def news_create():
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав на создание новостей", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Получаем данные формы
+        title = request.form.get("title")
+        content = request.form.get("content")
+        is_hidden = request.form.get("is_hidden") == "on"
+        
+        logger.info(f"Creating news with data: title={title}, is_hidden={is_hidden}")
+        
+        if not title or not content:
+            flash("Заполните все обязательные поля", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Создаем новость
+        news_data = {
+            "title": title,
+            "content": content,
+            "is_hidden": is_hidden
+        }
+        
+        # Обрабатываем изображение, если оно загружено
+        if "image" in request.files:
+            image_file = request.files["image"]
+            if image_file and image_file.filename:
+                news_data["image"] = image_file
+        
+        logger.info(f"Sending data to API: {news_data}")
+        result = api_client.create_news(**news_data)
+        logger.info(f"API response: {result}")
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"добавил новость \"{title}\"")
+        except:
+            pass
+        
+        flash("Новость успешно создана", category="success")
+        
+        # Если новость скрытая, перезагружаем страницу с включенным фильтром
+        if is_hidden:
+            return redirect(url_for("panel.news_list", show_hidden="true"))
+        else:
+            return redirect(url_for("panel.news_list"))
+        
+    except Exception as e:
+        logger.error(f"Error creating news: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        flash("Ошибка при создании новости", category="error")
+        return redirect(url_for("panel.news_list"))
+
+
+@panel.route("/news/<int:news_id>", methods=["GET"], endpoint="news_detail")
+@login_required
+def news_detail(news_id):
+    try:
+        news_item = api_client.get_news_by_id(news_id)
+        return jsonify(news_item)
+    except Exception as e:
+        logger.error(f"Error getting news {news_id}: {str(e)}")
+        return jsonify({"error": "Новость не найдена"}), 404
+
+
+@panel.route("/news/<int:news_id>/edit", methods=["POST"], endpoint="news_edit")
+@login_required
+def news_edit(news_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав на редактирование новостей", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Получаем данные формы
+        title = request.form.get("title")
+        content = request.form.get("content")
+        is_hidden = request.form.get("is_hidden") == "on"
+        
+        if not title or not content:
+            flash("Заполните все обязательные поля", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Обновляем новость
+        news_data = {
+            "title": title,
+            "content": content,
+            "is_hidden": is_hidden
+        }
+        
+        # Обрабатываем изображение, если оно загружено
+        if "image" in request.files:
+            image_file = request.files["image"]
+            if image_file and image_file.filename:
+                news_data["image"] = image_file
+        # Обрабатываем удаление изображения
+        if request.form.get("remove_image") == "true":
+            news_data["remove_image"] = "true"
+        
+        result = api_client.update_news(news_id, **news_data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал новость \"{title}\"")
+        except:
+            pass
+        
+        flash("Новость успешно обновлена", category="success")
+        return redirect(url_for("panel.news_list"))
+        
+    except Exception as e:
+        logger.error(f"Error updating news {news_id}: {str(e)}")
+        flash("Ошибка при обновлении новости", category="error")
+        return redirect(url_for("panel.news_list"))
+
+
+@panel.route("/news/<int:news_id>/delete", methods=["POST"], endpoint="news_delete")
+@login_required
+def news_delete(news_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав на удаление новостей", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Получаем информацию о новости для события
+        try:
+            news_item = api_client.get_news_by_id(news_id)
+            news_title = news_item.get("title", "неизвестная новость")
+        except:
+            news_title = "неизвестная новость"
+        
+        # Удаляем новость
+        api_client.delete_news(news_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"удалил новость \"{news_title}\"")
+        except:
+            pass
+        
+        flash("Новость успешно удалена", category="success")
+        return redirect(url_for("panel.news_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting news {news_id}: {str(e)}")
+        flash("Ошибка при удалении новости", category="error")
+        return redirect(url_for("panel.news_list"))
+
+
+@panel.route("/news/<int:news_id>/toggle-visibility", methods=["POST"], endpoint="news_toggle_visibility")
+@login_required
+def news_toggle_visibility(news_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав на изменение видимости новостей", category="error")
+            return redirect(url_for("panel.news_list"))
+        
+        # Получаем информацию о новости для события
+        try:
+            news_item = api_client.get_news_by_id(news_id)
+            news_title = news_item.get("title", "неизвестная новость")
+        except:
+            news_title = "неизвестная новость"
+        
+        # Переключаем видимость новости
+        result = api_client.toggle_news_visibility(news_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"изменил видимость новости \"{news_title}\"")
+        except:
+            pass
+        
+        flash("Видимость новости изменена", category="success")
+        
+        # Сохраняем состояние фильтра
+        show_hidden = request.form.get("show_hidden", "false")
+        if show_hidden == "true":
+            return redirect(url_for("panel.news_list", show_hidden="true"))
+        else:
+            return redirect(url_for("panel.news_list"))
+        
+    except Exception as e:
+        logger.error(f"Error toggling news visibility {news_id}: {str(e)}")
+        flash("Ошибка при изменении видимости новости", category="error")
+        return redirect(url_for("panel.news_list"))
+
+
+@panel.route("/news/<int:news_id>/image", methods=["GET"], endpoint="news_image")
+@login_required
+def news_image(news_id):
+    try:
+        # Получаем изображение новости
+        image_data = api_client.download_file(f"/news/{news_id}/image")
+        if image_data:
+            return send_file(
+                io.BytesIO(image_data),
+                mimetype='image/jpeg',
+                as_attachment=False
+            )
+        else:
+            return "Изображение не найдено", 404
+    except Exception as e:
+        logger.error(f"Error getting news image {news_id}: {str(e)}")
+        return "Ошибка при получении изображения", 404
 
 
 @panel.route("/reviews", methods=["GET", "POST"], endpoint="reviews_list")
@@ -67,13 +472,289 @@ def news_list():
 def reviews_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        reviews = api_client.get("/reviews")
+        current_user = get_current_user()
+        
+        try:
+            # Получаем отзывы в зависимости от прав пользователя
+            if current_user and current_user.get("is_superuser"):
+                # Для администраторов показываем все отзывы или по фильтру
+                show_hidden = request.args.get("show_hidden", "false").lower() == "true"
+                reviews = api_client.get_reviews(show_hidden=show_hidden)
+            else:
+                # Для обычных пользователей только одобренные отзывы
+                reviews = api_client.get_reviews(show_hidden=False)
+            
+            logger.info(f"Loaded {len(reviews)} reviews")
+            
+            # Форматируем даты
+            for review in reviews:
+                if "created_at" in review:
+                    try:
+                        review["created_at"] = datetime.fromisoformat(
+                            review["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        review["created_at"] = "Неизвестно"
+                
+                if "updated_at" in review and review["updated_at"]:
+                    try:
+                        review["updated_at"] = datetime.fromisoformat(
+                            review["updated_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        review["updated_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/reviews/reviews_list.html",
+                nav_elements=nav_elements,
+                reviews=reviews,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading reviews: {str(e)}")
+            flash("Ошибка при загрузке отзывов", category="error")
+            return render_template(
+                "panel/reviews/reviews_list.html",
+                nav_elements=nav_elements,
+                reviews=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/reviews/create", methods=["GET", "POST"], endpoint="review_create")
+@login_required
+def review_create():
+    if request.method == "GET":
+        nav_elements = get_navigation_elements()
+        current_user = get_current_user()
         return render_template(
-            "panel/reviews/reviews_list.html",
+            "panel/reviews/review_form.html",
             nav_elements=nav_elements,
-            reviews=reviews,
+            current_user=current_user
         )
-    ...
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        # Получаем данные из формы (как ожидает backend)
+        name = request.form.get("name")
+        email = request.form.get("email")
+        review = request.form.get("review")
+        rating = request.form.get("rating", 5)
+        is_approved = request.form.get("is_approved") == "on"
+        
+        logger.info(f"Creating review with data: name={name}, email={email}, rating={rating}, is_approved={is_approved}")
+        
+        if not all([name, email, review]):
+            flash("Заполните все обязательные поля", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        data = {
+            "name": name,
+            "email": email,
+            "review": review,
+            "rating": int(rating),
+            "is_approved": is_approved
+        }
+        logger.info(f"Sending data to API: {data}")
+        result = api_client.create_review(**data)
+        logger.info(f"API response: {result}")
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"добавил отзыв от {name}")
+        except:
+            pass
+        flash("Отзыв успешно создан", category="success")
+        
+        # Если отзыв неодобренный, перезагружаем страницу с включенным фильтром
+        if not is_approved:
+            return redirect(url_for("panel.reviews_list", show_hidden="true"))
+        else:
+            return redirect(url_for("panel.reviews_list"))
+    except Exception as e:
+        logger.error(f"Error creating review: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        flash("Ошибка при создании отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
+@panel.route("/reviews/<int:review_id>", methods=["GET"], endpoint="review_detail")
+@login_required
+def review_detail(review_id):
+    try:
+        review = api_client.get_review_by_id(review_id)
+        return jsonify(review)
+    except Exception as e:
+        logger.error(f"Error getting review {review_id}: {str(e)}")
+        return jsonify({"error": "Отзыв не найден"}), 404
+
+
+@panel.route("/reviews/<int:review_id>/edit", methods=["POST"], endpoint="review_edit")
+@login_required
+def review_edit(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        # Получаем данные из формы
+        name = request.form.get("name")
+        email = request.form.get("email")
+        review = request.form.get("review")
+        rating = request.form.get("rating", 5)
+        is_approved = request.form.get("is_approved") == "on"
+        is_hidden = request.form.get("is_hidden") == "on"
+        if not all([name, email, review]):
+            flash("Заполните все обязательные поля", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        # Обновляем отзыв
+        data = {
+            "name": name,
+            "email": email,
+            "review": review,
+            "rating": int(rating),
+            "is_approved": is_approved,
+            "is_hidden": is_hidden
+        }
+        result = api_client.update_review(review_id, **data)
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал отзыв от {name}")
+        except:
+            pass
+        flash("Отзыв успешно обновлен", category="success")
+        return redirect(url_for("panel.reviews_list"))
+    except Exception as e:
+        logger.error(f"Error updating review {review_id}: {str(e)}")
+        flash("Ошибка при обновлении отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
+@panel.route("/reviews/<int:review_id>/approve", methods=["POST"], endpoint="review_approve")
+@login_required
+def review_approve(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        # Получаем информацию об отзыве для события
+        try:
+            review = api_client.get_review_by_id(review_id)
+            name = review.get("name", "неизвестный автор")
+        except:
+            name = "неизвестный автор"
+        # Одобряем отзыв
+        result = api_client.update_review(review_id, is_approved=True)
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"одобрил отзыв от {name}")
+        except:
+            pass
+        flash("Отзыв одобрен", category="success")
+        return redirect(url_for("panel.reviews_list"))
+    except Exception as e:
+        logger.error(f"Error approving review {review_id}: {str(e)}")
+        flash("Ошибка при одобрении отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
+@panel.route("/reviews/<int:review_id>/reject", methods=["POST"], endpoint="review_reject")
+@login_required
+def review_reject(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        # Получаем информацию об отзыве для события
+        try:
+            review = api_client.get_review_by_id(review_id)
+            name = review.get("name", "неизвестный автор")
+        except:
+            name = "неизвестный автор"
+        # Отклоняем отзыв
+        result = api_client.update_review(review_id, is_approved=False)
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отклонил отзыв от {name}")
+        except:
+            pass
+        flash("Отзыв отклонен", category="success")
+        return redirect(url_for("panel.reviews_list"))
+    except Exception as e:
+        logger.error(f"Error rejecting review {review_id}: {str(e)}")
+        flash("Ошибка при отклонении отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
+@panel.route("/reviews/<int:review_id>/delete", methods=["POST"], endpoint="review_delete")
+@login_required
+def review_delete(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        
+        # Получаем информацию об отзыве для события
+        try:
+            review = api_client.get_review_by_id(review_id)
+            name = review.get("name", "неизвестный автор")
+        except:
+            name = "неизвестный автор"
+        
+        # Удаляем отзыв
+        api_client.delete_review(review_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"удалил отзыв от {name}")
+        except:
+            pass
+        
+        flash("Отзыв успешно удален", category="success")
+        return redirect(url_for("panel.reviews_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting review {review_id}: {str(e)}")
+        flash("Ошибка при удалении отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
+@panel.route("/reviews/<int:review_id>/toggle-visibility", methods=["POST"], endpoint="review_toggle_visibility")
+@login_required
+def review_toggle_visibility(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        
+        # Получаем текущий отзыв и переключаем статус одобрения
+        review = api_client.get_review_by_id(review_id)
+        new_approved = not review.get("is_approved", False)
+        api_client.update_review(review_id, is_approved=new_approved)
+        
+        # Создаем событие
+        try:
+            action_text = "одобрил" if new_approved else "скрыл"
+            safe_create_action(current_user.get("username", "Администратор"), f"{action_text} отзыв от {review.get('name', 'неизвестный автор')}")
+        except:
+            pass
+        
+        flash("Статус отзыва изменен", category="success")
+        
+        # Сохраняем состояние фильтра
+        show_hidden = request.form.get("show_hidden", "false")
+        if show_hidden == "true":
+            return redirect(url_for("panel.reviews_list", show_hidden="true"))
+        else:
+            return redirect(url_for("panel.reviews_list"))
+        
+    except Exception as e:
+        logger.error(f"Error toggling review visibility {review_id}: {str(e)}")
+        flash("Ошибка при изменении статуса отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
 
 
 @panel.route("/schedule", methods=["GET", "POST"], endpoint="schedule_list")
@@ -81,13 +762,157 @@ def reviews_list():
 def schedule_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        schedule = api_client.get("/schedule")
-        return render_template(
-            "panel/schedule/schedule_list.html",
-            nav_elements=nav_elements,
-            schedule=schedule,
-        )
-    ...
+        current_user = get_current_user()
+        
+        try:
+            schedules = api_client.get_schedules()
+            
+            # Форматируем даты
+            for schedule in schedules:
+                if "date" in schedule:
+                    try:
+                        # Преобразуем дату в формат для отображения
+                        date_obj = datetime.strptime(schedule["date"], "%Y-%m-%d")
+                        schedule["date"] = date_obj.strftime("%d.%m.%Y")
+                    except (ValueError, TypeError):
+                        schedule["date"] = "Неизвестно"
+                
+                if "time" in schedule and schedule["time"]:
+                    try:
+                        # Форматируем время
+                        time_obj = datetime.strptime(schedule["time"], "%H:%M")
+                        schedule["time"] = time_obj.strftime("%H:%M")
+                    except (ValueError, TypeError):
+                        schedule["time"] = "Неизвестно"
+            
+            return render_template(
+                "panel/schedule/schedule_list.html",
+                nav_elements=nav_elements,
+                schedules=schedules,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading schedules: {str(e)}")
+            flash("Ошибка при загрузке расписания", category="error")
+            return render_template(
+                "panel/schedule/schedule_list.html",
+                nav_elements=nav_elements,
+                schedules=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/schedule/create", methods=["POST"], endpoint="schedule_create")
+@login_required
+def schedule_create():
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Получаем данные из JSON
+        data = request.get_json()
+        
+        if not data.get("title") or not data.get("date"):
+            flash("Заполните обязательные поля", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Создаем событие
+        result = api_client.create_schedule(**data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"добавил событие \"{data['title']}\"")
+        except:
+            pass
+        
+        flash("Событие успешно создано", category="success")
+        return redirect(url_for("panel.schedule_list"))
+        
+    except Exception as e:
+        logger.error(f"Error creating schedule: {str(e)}")
+        flash("Ошибка при создании события", category="error")
+        return redirect(url_for("panel.schedule_list"))
+
+
+@panel.route("/schedule/<int:schedule_id>", methods=["GET"], endpoint="schedule_detail")
+@login_required
+def schedule_detail(schedule_id):
+    try:
+        schedule = api_client.get_schedule_by_id(schedule_id)
+        return jsonify(schedule)
+    except Exception as e:
+        logger.error(f"Error getting schedule {schedule_id}: {str(e)}")
+        return jsonify({"error": "Событие не найдено"}), 404
+
+
+@panel.route("/schedule/<int:schedule_id>/edit", methods=["POST"], endpoint="schedule_edit")
+@login_required
+def schedule_edit(schedule_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Получаем данные из JSON
+        data = request.get_json()
+        
+        if not data.get("title") or not data.get("date"):
+            flash("Заполните обязательные поля", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Обновляем событие
+        result = api_client.update_schedule(schedule_id, **data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал событие \"{data['title']}\"")
+        except:
+            pass
+        
+        flash("Событие успешно обновлено", category="success")
+        return redirect(url_for("panel.schedule_list"))
+        
+    except Exception as e:
+        logger.error(f"Error updating schedule {schedule_id}: {str(e)}")
+        flash("Ошибка при обновлении события", category="error")
+        return redirect(url_for("panel.schedule_list"))
+
+
+@panel.route("/schedule/<int:schedule_id>/delete", methods=["POST"], endpoint="schedule_delete")
+@login_required
+def schedule_delete(schedule_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Получаем информацию о событии для события
+        try:
+            schedule = api_client.get_schedule_by_id(schedule_id)
+            schedule_title = schedule.get("title", "неизвестное событие")
+        except:
+            schedule_title = "неизвестное событие"
+        
+        # Удаляем событие
+        api_client.delete_schedule(schedule_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"удалил событие \"{schedule_title}\"")
+        except:
+            pass
+        
+        flash("Событие успешно удалено", category="success")
+        return redirect(url_for("panel.schedule_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting schedule {schedule_id}: {str(e)}")
+        flash("Ошибка при удалении события", category="error")
+        return redirect(url_for("panel.schedule_list"))
 
 
 @panel.route("/users", methods=["GET", "POST"], endpoint="users_list")
@@ -95,11 +920,203 @@ def schedule_list():
 def users_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        users = api_client.get("/users")
-        return render_template(
-            "panel/users/users_list.html", nav_elements=nav_elements, users=users
-        )
-    ...
+        current_user = get_current_user()
+        
+        # Проверяем права доступа
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав для просмотра списка пользователей", category="error")
+            return redirect(url_for("panel.home"))
+        
+        try:
+            users = api_client.get_users()
+            
+            # Форматируем даты
+            for user in users:
+                if "created_at" in user:
+                    try:
+                        user["created_at"] = datetime.fromisoformat(
+                            user["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        user["created_at"] = "Неизвестно"
+                
+                if "updated_at" in user and user["updated_at"]:
+                    try:
+                        user["updated_at"] = datetime.fromisoformat(
+                            user["updated_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        user["updated_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/users/users_list.html",
+                nav_elements=nav_elements,
+                users=users,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading users: {str(e)}")
+            flash("Ошибка при загрузке пользователей", category="error")
+            return render_template(
+                "panel/users/users_list.html",
+                nav_elements=nav_elements,
+                users=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/users/invite", methods=["POST"], endpoint="user_invite")
+@login_required
+def user_invite():
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав для приглашения пользователей", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Получаем данные из JSON
+        data = request.get_json()
+        email = data.get("email")
+        is_recruiter = data.get("is_recruiter", False)
+        
+        if not email:
+            flash("Введите email пользователя", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Приглашаем пользователя
+        result = api_client.invite_user(email, is_recruiter=is_recruiter)
+        
+        # Создаем событие
+        try:
+            role_text = "рекуртера" if is_recruiter else "администратора"
+            safe_create_action(current_user.get("username", "Администратор"), f"пригласил {role_text} {email}")
+        except:
+            pass
+        
+        flash("Приглашение успешно отправлено", category="success")
+        return redirect(url_for("panel.users_list"))
+        
+    except Exception as e:
+        logger.error(f"Error inviting user: {str(e)}")
+        flash("Ошибка при отправке приглашения", category="error")
+        return redirect(url_for("panel.users_list"))
+
+
+@panel.route("/users/resend-invite", methods=["POST"], endpoint="user_resend_invite")
+@login_required
+def user_resend_invite():
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав для повторной отправки приглашений", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Получаем данные из JSON
+        data = request.get_json()
+        email = data.get("email")
+        
+        if not email:
+            flash("Email не указан", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Повторно отправляем приглашение
+        result = api_client.resend_invite(email)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"повторно отправил приглашение {email}")
+        except:
+            pass
+        
+        flash("Приглашение повторно отправлено", category="success")
+        return redirect(url_for("panel.users_list"))
+        
+    except Exception as e:
+        logger.error(f"Error resending invite: {str(e)}")
+        flash("Ошибка при повторной отправке приглашения", category="error")
+        return redirect(url_for("panel.users_list"))
+
+
+@panel.route("/users/<int:user_id>/delete", methods=["POST"], endpoint="user_delete")
+@login_required
+def user_delete(user_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав для удаления пользователей", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Проверяем, что пользователь не удаляет сам себя
+        if user_id == current_user.get("id"):
+            flash("Вы не можете удалить свой аккаунт", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Получаем информацию о пользователе для события
+        try:
+            user = api_client.get_user_by_id(user_id)
+            user_email = user.get("email", "неизвестный пользователь")
+        except:
+            user_email = "неизвестный пользователь"
+        
+        # Удаляем пользователя
+        api_client.delete_user(user_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"удалил пользователя {user_email}")
+        except:
+            pass
+        
+        flash("Пользователь успешно удален", category="success")
+        return redirect(url_for("panel.users_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting user {user_id}: {str(e)}")
+        flash("Ошибка при удалении пользователя", category="error")
+        return redirect(url_for("panel.users_list"))
+
+
+@panel.route("/users/<int:user_id>/edit", methods=["POST"], endpoint="user_edit")
+@login_required
+def user_edit(user_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Получаем данные из формы
+        data = request.form
+        username = data.get("username")
+        email = data.get("email")
+        role = data.get("role")
+        
+        if not username or not email:
+            flash("Заполните все обязательные поля", category="error")
+            return redirect(url_for("panel.users_list"))
+        
+        # Обновляем пользователя
+        user_data = {
+            "username": username,
+            "email": email,
+            "role": role
+        }
+        
+        result = api_client.update_user(user_id, user_data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал пользователя {username}")
+        except:
+            pass
+        
+        flash("Пользователь успешно обновлен", category="success")
+        return redirect(url_for("panel.users_list"))
+        
+    except Exception as e:
+        logger.error(f"Error editing user {user_id}: {str(e)}")
+        flash("Ошибка при обновлении пользователя", category="error")
+        return redirect(url_for("panel.users_list"))
 
 
 @panel.route("/vacancies", methods=["GET", "POST"], endpoint="vacancies_list")
@@ -336,7 +1353,6 @@ def profile():
     ...
 
 
-
 @panel.route("/student_resume_file", methods=["GET"], endpoint="student_resume_file")
 @login_required
 def student_resume_file():
@@ -361,3 +1377,144 @@ def student_resume_file():
         as_attachment=True,
         download_name=filename,
     )
+
+
+@panel.route("/vacancies/<int:vacancy_id>/activate", methods=["POST"], endpoint="vacancy_activate")
+@login_required
+def vacancy_activate(vacancy_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.vacancies_list"))
+        
+        # Активируем вакансию
+        api_client.activate_vacancy(vacancy_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), "активировал вакансию")
+        except:
+            pass
+        
+        flash("Вакансия успешно активирована", category="success")
+        return redirect(url_for("panel.vacancies_list"))
+        
+    except Exception as e:
+        logger.error(f"Error activating vacancy {vacancy_id}: {str(e)}")
+        flash("Ошибка при активации вакансии", category="error")
+        return redirect(url_for("panel.vacancies_list"))
+
+
+@panel.route("/vacancies/<int:vacancy_id>/deactivate", methods=["POST"], endpoint="vacancy_deactivate")
+@login_required
+def vacancy_deactivate(vacancy_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.vacancies_list"))
+        
+        # Деактивируем вакансию
+        api_client.deactivate_vacancy(vacancy_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), "деактивировал вакансию")
+        except:
+            pass
+        
+        flash("Вакансия успешно деактивирована", category="success")
+        return redirect(url_for("panel.vacancies_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deactivating vacancy {vacancy_id}: {str(e)}")
+        flash("Ошибка при деактивации вакансии", category="error")
+        return redirect(url_for("panel.vacancies_list"))
+
+
+@panel.route("/applications/<int:application_id>/approve", methods=["POST"], endpoint="application_approve")
+@login_required
+def application_approve(application_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.vacancies_list"))
+        
+        # Одобряем заявку
+        api_client.approve_application(application_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), "одобрил заявку на вакансию")
+        except:
+            pass
+        
+        flash("Заявка успешно одобрена", category="success")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+        
+    except Exception as e:
+        logger.error(f"Error approving application {application_id}: {str(e)}")
+        flash("Ошибка при одобрении заявки", category="error")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+
+
+@panel.route("/applications/<int:application_id>/reject", methods=["POST"], endpoint="application_reject")
+@login_required
+def application_reject(application_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.vacancies_list"))
+        
+        # Отклоняем заявку
+        api_client.reject_application(application_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), "отклонил заявку на вакансию")
+        except:
+            pass
+        
+        flash("Заявка успешно отклонена", category="success")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+        
+    except Exception as e:
+        logger.error(f"Error rejecting application {application_id}: {str(e)}")
+        flash("Ошибка при отклонении заявки", category="error")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+
+
+@panel.route("/applications/<int:application_id>/delete", methods=["POST"], endpoint="application_delete")
+@login_required
+def application_delete(application_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.vacancies_list"))
+        
+        # Удаляем заявку
+        api_client.delete_application(application_id)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), "удалил заявку на вакансию")
+        except:
+            pass
+        
+        flash("Заявка успешно удалена", category="success")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting application {application_id}: {str(e)}")
+        flash("Ошибка при удалении заявки", category="error")
+        return redirect(request.referrer or url_for("panel.vacancies_list"))
+
+# --- универсальная обрезка action для всех событий ---
+def safe_create_action(username, action):
+    if action and len(action) > 110:
+        action = action[:107] + '...'
+    return api_client.create_action(username=username, action=action)

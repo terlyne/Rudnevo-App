@@ -44,3 +44,8 @@
 </div>
 {% endblock %}
 {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/filter_preserver.js') }}"></script>
+{% endblock %}

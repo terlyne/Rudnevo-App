@@ -122,6 +122,27 @@
                                 </div>
 
                                 <div class="student-actions">
+                                    <form method="POST" action="{{ url_for('panel.application_approve', application_id=student.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                        <button type="submit" class="btn-approve" onclick="return confirm('Вы уверены, что хотите одобрить эту заявку?')">
+                                            <span class="btn-icon">✅</span>
+                                            Одобрить
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('panel.application_reject', application_id=student.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                        <button type="submit" class="btn-reject" onclick="return confirm('Вы уверены, что хотите отклонить эту заявку?')">
+                                            <span class="btn-icon">❌</span>
+                                            Отклонить
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('panel.application_delete', application_id=student.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.')">
+                                            <span class="btn-icon">🗑️</span>
+                                            Удалить
+                                        </button>
+                                    </form>
                                     <button type="button" class="btn-change-status"
                                         onclick="showStatusModal({{ student.id }}, '{{ student.status }}')">
                                         Изменить статус

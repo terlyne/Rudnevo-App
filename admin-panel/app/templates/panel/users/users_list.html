@@ -3,3 +3,161 @@
 {% block title %}
 Руднево - Пользователи
 {% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/users/users_list.css') }}">
+{% endblock %}
+
+{% block container %}
+<div class="users-container">
+    <div class="users-header">
+        <h1>Пользователи</h1>
+        <button class="btn-invite" onclick="inviteUser()">
+            <span class="btn-icon">📧</span>
+            Пригласить пользователя
+        </button>
+    </div>
+
+    <div class="users-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ users|length }}</div>
+                    <div class="stat-label">Всего пользователей</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👑</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ users|selectattr('is_superuser', 'equalto', True)|list|length }}</div>
+                    <div class="stat-label">Суперпользователей</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💼</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ users|selectattr('is_recruiter', 'equalto', True)|list|length }}</div>
+                    <div class="stat-label">Рекрутеров</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ users|selectattr('is_registered', 'equalto', False)|list|length }}</div>
+                    <div class="stat-label">Ожидают регистрации</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="users-list">
+        {% if users %}
+            {% for user in users %}
+            <div class="user-card {% if not user.is_registered %}pending{% endif %}">
+                <div class="user-avatar">
+                    <div class="avatar-placeholder">
+                        {% if user.is_superuser %}
+                            👑
+                        {% elif user.is_recruiter %}
+                            💼
+                        {% else %}
+                            👤
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="user-content">
+                    <div class="user-header">
+                        <div class="user-info">
+                            <div class="user-name">
+                                {% if user.username %}
+                                    {{ user.username }}
+                                {% else %}
+                                    <em>Не зарегистрирован</em>
+                                {% endif %}
+                            </div>
+                            <div class="user-email">{{ user.email }}</div>
+                        </div>
+                        <div class="user-status">
+                            {% if user.is_superuser %}
+                                <span class="status-superuser">Суперпользователь</span>
+                            {% elif user.is_recruiter %}
+                                <span class="status-recruiter">Рекрутер</span>
+                            {% else %}
+                                <span class="status-admin">Администратор</span>
+                            {% endif %}
+                            
+                            {% if not user.is_registered %}
+                                <span class="status-pending">Ожидает регистрации</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="user-meta">
+                        <div class="user-dates">
+                            {% if user.created_at %}
+                                <span class="created-date">Создан: {{ user.created_at }}</span>
+                            {% endif %}
+                            {% if user.is_registered and user.updated_at %}
+                                <span class="updated-date">Обновлен: {{ user.updated_at }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="user-actions">
+                    <form method="POST" action="{{ url_for('panel.user_delete', user_id=user.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить.')">
+                            <span class="btn-icon">🗑️</span>
+                            Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-users">
+                <div class="no-users-icon">👥</div>
+                <div class="no-users-text">Пользователей пока нет</div>
+                <div class="no-users-subtext">Пригласите первого пользователя, нажав кнопку "Пригласить пользователя"</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для приглашения пользователя -->
+<div id="inviteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Пригласить пользователя</h2>
+            <span class="close" onclick="closeInviteModal()">&times;</span>
+        </div>
+        <form id="inviteForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required placeholder="Введите email пользователя">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="is_recruiter" name="is_recruiter">
+                    <span class="checkmark"></span>
+                    Рекрутер (доступ к вакансиям)
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeInviteModal()">Отмена</button>
+                <button type="submit" class="btn-save">Отправить приглашение</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/users/users_list.js') }}"></script>
+{% endblock %}

@@ -5,6 +5,10 @@ from fastapi import HTTPException, UploadFile, status
 from PIL import Image
 
 from app.core.config import settings
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 async def save_upload_file(
@@ -51,6 +55,7 @@ async def save_image(file: UploadFile, folder: str, max_size: int | None = None)
     Сохранить изображение в указанную папку.
     Возвращает URL для доступа к изображению.
     """
+    logger.debug(f"filename: {file.filename}, content_type: {file.content_type}")
     if not file.content_type in settings.ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

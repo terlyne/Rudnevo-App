@@ -1,25 +1,55 @@
-function toggleHiddenVacancies() {
-    const checkbox = document.getElementById('show-hidden');
-    const showHidden = checkbox.checked;
+// Функции для работы с модальными окнами вакансий
 
-    // Отправляем AJAX запрос
-    fetch(`/vacancies?show_hidden=${showHidden}`)
-        .then(response => response.text())
-        .then(html => {
-            // Создаем временный элемент для парсинга HTML
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
+function openVacancyModal() {
+    document.getElementById('vacancyModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
 
-            // Находим контейнер с вакансиями в полученном HTML
-            const newVacancies = temp.querySelector('.vacancies-scroll').innerHTML;
+function closeVacancyModal() {
+    document.getElementById('vacancyModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    // Очищаем форму
+    document.getElementById('vacancyForm').reset();
+}
 
-            // Заменяем содержимое контейнера
-            document.querySelector('.vacancies-scroll').innerHTML = newVacancies;
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Произошла ошибка при загрузке вакансий');
-        });
+function editVacancy(vacancyId) {
+    // Перенаправляем на страницу редактирования
+    window.location.href = `/panel/vacancies/${vacancyId}/edit`;
+    return false;
+}
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('vacancyModal');
+    if (event.target === modal) {
+        closeVacancyModal();
+    }
+}
+
+// Закрытие модального окна при нажатии Escape
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeVacancyModal();
+    }
+});
+
+// Показать flash сообщение
+function showFlashMessage(message, type = 'info') {
+    const flashContainer = document.getElementById('flash-messages');
+    if (!flashContainer) return;
+
+    const flashDiv = document.createElement('div');
+    flashDiv.className = `flash-message flash-${type}`;
+    flashDiv.textContent = message;
+
+    flashContainer.appendChild(flashDiv);
+
+    // Автоматически удаляем сообщение через 5 секунд
+    setTimeout(() => {
+        if (flashDiv.parentNode) {
+            flashDiv.parentNode.removeChild(flashDiv);
+        }
+    }, 5000);
 }
 
 function deleteVacancy(vacancyId) {
@@ -28,4 +58,19 @@ function deleteVacancy(vacancyId) {
         form.action = `/vacancies/${vacancyId}/delete`;
         form.submit();
     }
+}
+
+// Функции для работы с вакансиями
+
+function toggleHiddenVacancies() {
+    const showHidden = document.getElementById('showHidden').checked;
+    const hiddenItems = document.querySelectorAll('.vacancy-item.hidden');
+    
+    hiddenItems.forEach(item => {
+        if (showHidden) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }

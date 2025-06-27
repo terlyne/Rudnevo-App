@@ -13,7 +13,7 @@ class News(Base):
 
     __tablename__ = "news"
 
-    title: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(Text)
     content: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_hidden: Mapped[bool] = mapped_column(default=False)

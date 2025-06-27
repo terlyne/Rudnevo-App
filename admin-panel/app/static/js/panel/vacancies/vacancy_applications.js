@@ -88,3 +88,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Функции для работы с заявками на вакансии
+
+// Показать flash сообщение
+function showFlashMessage(message, type = 'info') {
+    const flashContainer = document.getElementById('flash-messages');
+    if (!flashContainer) return;
+
+    const flashDiv = document.createElement('div');
+    flashDiv.className = `flash-message flash-${type}`;
+    flashDiv.textContent = message;
+
+    flashContainer.appendChild(flashDiv);
+
+    // Автоматически удаляем сообщение через 5 секунд
+    setTimeout(() => {
+        if (flashDiv.parentNode) {
+            flashDiv.parentNode.removeChild(flashDiv);
+        }
+    }, 5000);
+}
+
+// Фильтрация заявок по статусу
+function filterApplications(status) {
+    const applications = document.querySelectorAll('.application-item');
+    
+    applications.forEach(app => {
+        const appStatus = app.getAttribute('data-status');
+        if (status === 'all' || appStatus === status) {
+            app.style.display = 'block';
+        } else {
+            app.style.display = 'none';
+        }
+    });
+    
+    // Обновляем активную кнопку фильтра
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+// Сортировка заявок
+function sortApplications(criteria) {
+    const container = document.querySelector('.applications-list');
+    const applications = Array.from(container.children);
+    
+    applications.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch(criteria) {
+            case 'date':
+                aValue = new Date(a.getAttribute('data-date'));
+                bValue = new Date(b.getAttribute('data-date'));
+                return bValue - aValue; // Новые сначала
+            case 'name':
+                aValue = a.querySelector('.student-name').textContent.toLowerCase();
+                bValue = b.querySelector('.student-name').textContent.toLowerCase();
+                return aValue.localeCompare(bValue);
+            case 'status':
+                aValue = a.getAttribute('data-status');
+                bValue = b.getAttribute('data-status');
+                return aValue.localeCompare(bValue);
+            default:
+                return 0;
+        }
+    });
+    
+    // Переставляем элементы
+    applications.forEach(app => container.appendChild(app));
+}

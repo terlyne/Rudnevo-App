@@ -1,0 +1,58 @@
+{% extends "panel/base.html" %}
+
+{% block title %}
+Создать отзыв
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/reviews/reviews_list.css') }}">
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/reviews/review_form.js') }}"></script>
+{% endblock %}
+
+{% block container %}
+<div class="review-form-container">
+    <h2>Создать отзыв</h2>
+    <form method="POST" action="{{ url_for('panel.review_create') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+        <div class="form-group">
+            <label for="name">Имя автора *</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email автора *</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="rating">Рейтинг *</label>
+            <div class="rating-stars">
+                <input type="hidden" id="rating" name="rating" value="5">
+                <span class="star-input" data-rating="1">☆</span>
+                <span class="star-input" data-rating="2">☆</span>
+                <span class="star-input" data-rating="3">☆</span>
+                <span class="star-input" data-rating="4">☆</span>
+                <span class="star-input" data-rating="5">★</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="review">Текст отзыва *</label>
+            <textarea id="review" name="review" rows="6" required></textarea>
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="is_hidden" name="is_hidden">
+                <span class="checkmark"></span>
+                Скрыть отзыв
+            </label>
+        </div>
+        <div class="form-actions">
+            <a href="{{ url_for('panel.reviews_list') }}" class="btn-cancel">Отмена</a>
+            <button type="submit" class="btn-save">Сохранить</button>
+        </div>
+    </form>
+</div>
+{% endblock %} 

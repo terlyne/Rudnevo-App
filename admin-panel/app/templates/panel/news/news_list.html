@@ -4,6 +4,197 @@
 Руднево - Новости
 {% endblock %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/news/news_list.css') }}">
+<style>
+.btn-remove-image {
+    background: #f44336;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+    display: inline-block;
+}
+.btn-remove-image:hover {
+    background: #c62828;
+}
+</style>
+{% endblock %}
+
 {% block container %}
-Привет! Новости!
+<div class="news-container" data-is-superuser="{{ 'true' if current_user.is_superuser else 'false' }}">
+    <div class="news-header">
+        <div class="header-content">
+            <h1>Новости</h1>
+            <p class="header-subtitle">Создайте первую новость, нажав кнопку "Создать новость"</p>
+        </div>
+        <button class="btn-create" onclick="createNews()">
+            <span class="btn-icon">+</span>
+            Создать новость
+        </button>
+    </div>
+
+    <div class="news-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📰</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ news|length }}</div>
+                    <div class="stat-label">Всего новостей</div>
+                </div>
+            </div>
+            {% if current_user.is_superuser %}
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ news|selectattr('is_hidden', 'equalto', False)|list|length }}</div>
+                    <div class="stat-label">Опубликованных</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🙈</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ news|selectattr('is_hidden', 'equalto', True)|list|length }}</div>
+                    <div class="stat-label">Скрытых</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="news-filters">
+        <label class="filter-checkbox">
+            <input type="checkbox" id="showHidden" onchange="toggleHiddenNews()">
+            <span class="checkmark"></span>
+            Показать скрытые новости
+        </label>
+    </div>
+
+    <div class="news-list">
+        {% if news %}
+            {% for news_item in news %}
+            <div class="news-card {% if news_item.is_hidden %}hidden{% endif %}">
+                <div class="news-image">
+                    {% if news_item.image_url %}
+                        <img src="{{ url_for('panel.news_image', news_id=news_item.id) }}" alt="Изображение новости">
+                    {% else %}
+                        <div class="no-image">
+                            <span>📰</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="news-content">
+                    <div class="news-header-info">
+                        <h3 class="news-title">
+                            <span>
+                            {% if news_item.title and news_item.title|length > 50 %}
+                                {{ news_item.title[:50] }}...
+                            {% else %}
+                                {{ news_item.title }}
+                            {% endif %}
+                            </span>
+                        </h3>
+                        <div class="news-status">
+                            {% if news_item.is_hidden %}
+                                <span class="status-hidden">Скрыта</span>
+                            {% else %}
+                                <span class="status-visible">Опубликована</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="news-excerpt">
+                        <span>
+                        {% if news_item.content and news_item.content|length > 50 %}
+                            {{ news_item.content[:50] }}...
+                        {% else %}
+                            {{ news_item.content }}
+                        {% endif %}
+                        </span>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-date">{{ news_item.created_at }}</span>
+                        <div class="news-actions">
+                            <button type="button" class="btn-edit" onclick="return editNews({{ news_item.id }})">
+                                <span class="btn-icon">✏️</span>
+                                Редактировать
+                            </button>
+                            <form method="POST" action="{{ url_for('panel.news_toggle_visibility', news_id=news_item.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                <input type="hidden" name="show_hidden" value="{% if request.args.get('show_hidden') == 'true' %}true{% else %}false{% endif %}"/>
+                                <button type="submit" class="btn-toggle" onclick="return confirm('Вы уверены, что хотите изменить видимость новости?')">
+                                    <span class="btn-icon">👁️</span>
+                                    {% if news_item.is_hidden %}Показать{% else %}Скрыть{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('panel.news_delete', news_id=news_item.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить эту новость? Это действие нельзя отменить.')">
+                                    <span class="btn-icon">🗑️</span>
+                                    Удалить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-news">
+                <div class="no-news-icon">📰</div>
+                <div class="no-news-text">Новостей пока нет</div>
+                <div class="no-news-subtext">Создайте первую новость, нажав кнопку "Создать новость"</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для создания/редактирования новости -->
+<div id="newsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Создать новость</h2>
+            <span class="close" onclick="closeNewsModal()">&times;</span>
+        </div>
+        <form id="newsForm" method="POST" action="{{ url_for('panel.news_create') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <div class="form-group">
+                <label for="title">Заголовок *</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="content">Содержание *</label>
+                <textarea id="content" name="content" rows="8" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="image">Изображение</label>
+                <div id="imageBlock">
+                    <img id="imagePreview" src="" alt="Превью изображения" style="display:none;max-width:100%;margin-top:10px;" />
+                    <button type="button" id="removeImageBtn" style="display:none;margin-top:10px;" class="btn-remove-image">Удалить изображение</button>
+                    <input type="file" id="image" name="image" accept="image/*" style="display:block;" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="is_hidden" name="is_hidden">
+                    <span class="checkmark"></span>
+                    Скрыть новость
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeNewsModal()">Отмена</button>
+                <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/news/news_list.js') }}"></script>
 {% endblock %}

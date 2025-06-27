@@ -8,7 +8,8 @@ class ReviewBase(BaseModel):
     name: str
     email: EmailStr
     review: str
-    is_hidden: bool = True
+    rating: int = 5
+    is_approved: bool = False
 
 
 class ReviewCreate(ReviewBase):
@@ -22,7 +23,11 @@ class ReviewCreate(ReviewBase):
 class ReviewUpdate(BaseModel):
     """Схема обновления отзыва (только состояние)"""
 
-    is_hidden: bool
+    name: str | None = None
+    email: EmailStr | None = None
+    review: str | None = None
+    rating: int | None = None
+    is_approved: bool | None = None
 
 
 class ReviewInDB(ReviewBase):

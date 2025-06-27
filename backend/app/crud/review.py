@@ -12,11 +12,16 @@ async def get_review(db: AsyncSession, review_id: int) -> Review | None:
 
 
 async def get_reviews(
-    db: AsyncSession, skip: int = 0, limit: int = 100
+    db: AsyncSession, skip: int = 0, limit: int = 100, show_hidden: bool = False
 ) -> list[Review]:
     """Получить список отзывов"""
+    query = select(Review)
+
+    if not show_hidden:
+        query = query.where(Review.is_approved == True)
+
     result = await db.execute(
-        select(Review).order_by(Review.created_at.desc()).offset(skip).limit(limit)
+        query.order_by(Review.created_at.desc()).offset(skip).limit(limit)
     )
     return result.scalars().all()
 
@@ -33,12 +38,16 @@ async def create_review(db: AsyncSession, review_in: ReviewCreate) -> Review:
 async def update_review(
     db: AsyncSession, review_id: int, review_in: ReviewUpdate
 ) -> Review | None:
-    """Обновление отзыва (только состояние)"""
-    db_review = await get_review(review_id)
+    """Обновление отзыва"""
+    db_review = await get_review(db, review_id)
     if not db_review:
         return None
 
-    db_review(is_hidden=review_in.is_hidden)
+    # Обновляем только переданные поля
+    update_data = review_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_review, field, value)
+    
     await db.commit()
     await db.refresh(db_review)
 

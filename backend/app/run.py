@@ -17,6 +17,9 @@ from app.core.security import create_access_token
 from app.utils.email import send_registration_email
 from app.utils.task_scheduler import run_periodic_task, actions_weekly_cleanup
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

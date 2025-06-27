@@ -10,24 +10,26 @@
 {% endblock %}
 
 {% block container %}
-<div class="vacancies-header">
-    <h1>Вакансии</h1>
-    <div class="vacancies-controls">
-        <a href="{{ url_for('panel.vacancy_create') }}" class="btn-create">Создать вакансию</a>
-        <div class="filter-controls">
-            <label class="filter-label">
-                <input type="checkbox" id="show-hidden" {% if show_hidden %}checked{% endif %}
-                    onchange="toggleHiddenVacancies()">
-                Показать скрытые
-            </label>
-        </div>
-    </div>
-</div>
-
 <div class="vacancies-container">
+    <div class="vacancies-header">
+        <h1>Вакансии</h1>
+        <a href="{{ url_for('panel.vacancy_create') }}" class="btn-create">
+            <span class="btn-icon">+</span>
+            Создать вакансию
+        </a>
+    </div>
+
+    <div class="vacancies-filters">
+        <label class="filter-checkbox">
+            <input type="checkbox" id="showHidden" {% if show_hidden %}checked{% endif %} onchange="toggleHiddenVacancies()">
+            <span class="checkmark"></span>
+            Показать скрытые вакансии
+        </label>
+    </div>
+
     <div class="vacancies-scroll">
         {% for vacancy in vacancies %}
-        <div class="vacancy-item">
+        <div class="vacancy-item {% if vacancy.is_hidden %}hidden{% endif %}">
             <div class="vacancy-header">
                 <div class="vacancy-title-section">
                     <h3 class="vacancy-title">{{ vacancy.title }}</h3>
@@ -42,9 +44,20 @@
                 <div class="vacancy-actions">
                     <a href="{{ url_for('panel.vacancy_applications', vacancy_id=vacancy.id) }}"
                         class="btn-applications">Заявки ({{ vacancy.statistics.total_applications }})</a>
-                    <a href="{{ url_for('panel.vacancy_edit', vacancy_id=vacancy.id) }}"
-                        class="btn-edit">Редактировать</a>
-                    <button onclick="deleteVacancy({{ vacancy.id }})" class="btn-delete">Удалить</button>
+                    <form method="POST" action="{{ url_for('panel.vacancy_edit', vacancy_id=vacancy.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-edit" onclick="return editVacancy({{ vacancy.id }})">
+                            <span class="btn-icon">✏️</span>
+                            Редактировать
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('panel.vacancy_delete', vacancy_id=vacancy.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить эту вакансию? Это действие нельзя отменить.')">
+                            <span class="btn-icon">🗑️</span>
+                            Удалить
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -102,8 +115,7 @@
 
                     <div class="vacancy-progress">
                         <div class="progress-info">
-                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount
-                                }}</span>
+                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount }}</span>
                             {% if vacancy.statistics.is_full %}
                             <span class="status-full">Вакансия заполнена</span>
                             {% endif %}

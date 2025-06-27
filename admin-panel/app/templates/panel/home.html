@@ -10,16 +10,84 @@
 {% endblock %}
 
 {% block container %}
-<h1>Последние события</h1>
-<div class="actions-container">
-    <div class="actions-scroll">
-        {% for action in last_actions %}
-        <div class="action-item">
-            <span class="action-username">{{ action.username }}</span>
-            <span class="action-text">{{ action.action }}</span>
-            <span class="action-time">{{ action.created_at }}</span>
+<div class="home-container">
+    <h1>Добро пожаловать в панель администратора</h1>
+    
+    <div class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📰</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ stats.news_count }}</div>
+                    <div class="stat-label">Новостей</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">❓</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ stats.feedback_count }}</div>
+                    <div class="stat-label">Вопросов</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ stats.reviews_count }}</div>
+                    <div class="stat-label">Отзывов</div>
+                </div>
+            </div>
+            {% if current_user.is_superuser %}
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ stats.users_count }}</div>
+                    <div class="stat-label">Пользователей</div>
+                </div>
+            </div>
+            {% endif %}
         </div>
-        {% endfor %}
+    </div>
+
+    <div class="actions-section">
+        <h2>Последние события</h2>
+        <div class="actions-container">
+            {% if last_actions %}
+            <div class="actions-scroll">
+                {% for action in last_actions %}
+                <div class="action-item">
+                    <div class="action-icon">
+                        {% if "новость" in action.action.lower() %}
+                            📰
+                        {% elif "вопрос" in action.action.lower() or "обратную связь" in action.action.lower() %}
+                            ❓
+                        {% elif "отзыв" in action.action.lower() %}
+                            ⭐
+                        {% elif "вакансию" in action.action.lower() %}
+                            💼
+                        {% elif "расписание" in action.action.lower() %}
+                            📅
+                        {% else %}
+                            🔄
+                        {% endif %}
+                    </div>
+                    <div class="action-content">
+                        <div class="action-header">
+                            <span class="action-username">{{ action.username }}</span>
+                            <span class="action-time">{{ action.created_at }}</span>
+                        </div>
+                        <div class="action-text">{{ action.action }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-actions">
+                <div class="no-actions-icon">📋</div>
+                <div class="no-actions-text">Пока нет событий</div>
+                <div class="no-actions-subtext">Здесь будут отображаться последние действия в системе</div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -45,7 +45,9 @@ async def update_news(
 
     update_data = news_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        if value is not None:
+        if field == "image_url":
+            setattr(db_news, field, value)
+        elif value is not None:
             setattr(db_news, field, value)
 
     await db.commit()

@@ -59,9 +59,12 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB для файлов резюме
     ALLOWED_IMAGE_TYPES: set[str] = {
         "image/jpeg",
+        "image/jpg",
+        "image/pjpeg",
         "image/png",
         "image/gif",
         "image/webp",
+        "application/octet-stream",
     }
     ALLOWED_RESUME_TYPES: set[str] = {
         # PDF документы

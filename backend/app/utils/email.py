@@ -84,7 +84,7 @@ async def send_feedback_response(email_to: str, name: str, response_text: str) -
         {response_text}
         
         С уважением,
-        Администрация
+        Администрация Руднево
         """,
         subtype="plain",
     )

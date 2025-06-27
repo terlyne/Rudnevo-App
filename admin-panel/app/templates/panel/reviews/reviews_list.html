@@ -4,6 +4,186 @@
 Руднево - Отзывы
 {% endblock %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/reviews/reviews_list.css') }}">
+{% endblock %}
+
 {% block container %}
-Привет! Отзывы!
+<div class="reviews-container" data-is-superuser="{{ 'true' if current_user.is_superuser else 'false' }}">
+    <div class="reviews-header">
+        <div class="header-content">
+            <h1>Отзывы</h1>
+            <p class="header-subtitle">Создайте первый отзыв, нажав кнопку "Создать отзыв"</p>
+        </div>
+        <button class="btn-create" onclick="createReview()">
+            <span class="btn-icon">+</span>
+            Создать отзыв
+        </button>
+    </div>
+
+    <div class="reviews-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ reviews|length }}</div>
+                    <div class="stat-label">Всего отзывов</div>
+                </div>
+            </div>
+            {% if current_user.is_superuser %}
+            <div class="stat-card">
+                <div class="stat-icon">👍</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ reviews|selectattr('is_approved', 'equalto', True)|list|length }}</div>
+                    <div class="stat-label">Одобренных</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ reviews|selectattr('is_approved', 'equalto', False)|list|length }}</div>
+                    <div class="stat-label">На модерации</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if current_user.is_superuser %}
+    <div class="reviews-filters">
+        <label class="filter-checkbox">
+            <input type="checkbox" id="showHidden" onchange="toggleHiddenReviews()">
+            <span class="checkmark"></span>
+            Показать скрытые отзывы
+        </label>
+    </div>
+    {% endif %}
+
+    <div class="reviews-list">
+        {% if reviews %}
+            {% for review in reviews %}
+            <div class="review-card {% if not review.is_approved %}pending hidden{% endif %}">
+                <div class="review-header">
+                    <div class="review-meta">
+                        <div class="review-author">
+                            <span class="author-name">{{ review.name }}</span>
+                            <span class="author-email">{{ review.email }}</span>
+                        </div>
+                        <div class="review-date">{{ review.created_at }}</div>
+                    </div>
+                    {% if current_user.is_superuser %}
+                    <div class="review-status">
+                        {% if review.is_approved %}
+                        <span class="status-approved">Одобрен</span>
+                        {% else %}
+                        <span class="status-pending">На модерации</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="review-content">
+                    <div class="review-rating">
+                        <span class="rating-label">Рейтинг:</span>
+                        <div class="rating-display">
+                            {% for i in range(5) %}
+                                {% if i < review.rating %}
+                                    <span class="star-display">★</span>
+                                {% else %}
+                                    <span class="star-display">☆</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="review-text">
+                        <h3>Отзыв:</h3>
+                        <p>{{ review.review }}</p>
+                    </div>
+                </div>
+                <div class="review-actions">
+                    <form method="POST" action="{{ url_for('panel.review_toggle_visibility', review_id=review.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <input type="hidden" name="show_hidden" value="{% if request.args.get('show_hidden') == 'true' %}true{% else %}false{% endif %}"/>
+                        {% if review.is_approved %}
+                        <button type="submit" class="btn-edit">
+                            <span class="btn-icon">🙈</span>
+                            Скрыть
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn-edit">
+                            <span class="btn-icon">✅</span>
+                            Одобрить
+                        </button>
+                        {% endif %}
+                    </form>
+                    <form method="POST" action="{{ url_for('panel.review_delete', review_id=review.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.')">
+                            <span class="btn-icon">🗑️</span>
+                            Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-reviews">
+                <div class="no-reviews-icon">⭐</div>
+                <div class="no-reviews-text">Отзывов пока нет</div>
+                <div class="no-reviews-subtext">Создайте первый отзыв, нажав кнопку "Создать отзыв"</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Создать отзыв</h2>
+            <span class="close" onclick="closeReviewModal()">&times;</span>
+        </div>
+        <form id="reviewForm" method="POST" action="{{ url_for('panel.review_create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <div class="form-group">
+                <label for="name">Имя автора *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email автора *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="rating">Рейтинг *</label>
+                <div class="rating-stars">
+                    <input type="hidden" id="rating" name="rating" value="5">
+                    <span class="star-input" data-rating="1">☆</span>
+                    <span class="star-input" data-rating="2">☆</span>
+                    <span class="star-input" data-rating="3">☆</span>
+                    <span class="star-input" data-rating="4">☆</span>
+                    <span class="star-input" data-rating="5">★</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="review">Текст отзыва *</label>
+                <textarea id="review" name="review" rows="6" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="is_approved" name="is_approved">
+                    <span class="checkmark"></span>
+                    Одобрить отзыв
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeReviewModal()">Отмена</button>
+                <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/reviews/reviews_list.js') }}"></script>
 {% endblock %}
