@@ -20,12 +20,33 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
 
         <div class="form-section">
+            <h3>Тип объявления</h3>
+            
+            <div class="form-group">
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="is_internship" value="false" 
+                               {% if not vacancy or not vacancy.is_internship %}checked{% endif %}>
+                        <span class="radio-custom"></span>
+                        Вакансия
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="is_internship" value="true" 
+                               {% if vacancy and vacancy.is_internship %}checked{% endif %}>
+                        <span class="radio-custom"></span>
+                        Стажировка
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
             <h3>Основная информация</h3>
 
             <div class="form-group">
-                <label for="title">Название вакансии *</label>
-                <input type="text" id="title" name="title" required value="{{ vacancy.title if vacancy else '' }}"
-                    placeholder="Введите название вакансии">
+                <label for="title">Название {% if not vacancy or not vacancy.is_internship %}вакансии{% else %}стажировки{% endif %} *</label>
+                <input type="text" id="title" name="title" required value="{{ vacancy.title if vacancy and vacancy.title else '' }}"
+                    placeholder="Введите название {% if not vacancy or not vacancy.is_internship %}вакансии{% else %}стажировки{% endif %}">
             </div>
 
             <div class="form-row">
@@ -58,15 +79,15 @@
             </div>
 
             <div class="form-group">
-                <label for="description">Описание вакансии *</label>
+                <label for="description">Описание {% if not vacancy or not vacancy.is_internship %}вакансии{% else %}стажировки{% endif %} *</label>
                 <textarea id="description" name="description" rows="6" required
-                    placeholder="Подробное описание вакансии, обязанности, задачи">{{ vacancy.description if vacancy else '' }}</textarea>
+                    placeholder="Подробное описание {% if not vacancy or not vacancy.is_internship %}вакансии{% else %}стажировки{% endif %}, обязанности, задачи">{{ vacancy.description if vacancy and vacancy.description else '' }}</textarea>
             </div>
 
             <div class="form-group">
                 <label for="requirements">Требования *</label>
                 <textarea id="requirements" name="requirements" rows="4" required
-                    placeholder="Требования к кандидату, навыки, опыт">{{ vacancy.requirements if vacancy else '' }}</textarea>
+                    placeholder="Требования к кандидату, навыки, опыт">{{ vacancy.requirements if vacancy and vacancy.requirements else '' }}</textarea>
             </div>
         </div>
 
@@ -94,22 +115,63 @@
                 </div>
             </div>
 
-            <div class="form-row">
+            <!-- Поля для вакансии (зарплата) -->
+            <div class="form-row vacancy-fields" {% if vacancy and vacancy.is_internship %}style="display: none;"{% endif %}>
                 <div class="form-group">
-                    <label for="start">Дата начала *</label>
-                    <input type="date" id="start" name="start" required value="{{ vacancy.start if vacancy else '' }}">
+                    <label for="salary_from">Зарплата от (руб.)</label>
+                    <input type="number" id="salary_from" name="salary_from" min="0" 
+                           value="{{ vacancy.salary_from if vacancy and vacancy.salary_from else '' }}" placeholder="Например: 50000">
                 </div>
 
                 <div class="form-group">
-                    <label for="end">Дата окончания *</label>
-                    <input type="date" id="end" name="end" required value="{{ vacancy.end if vacancy else '' }}">
+                    <label for="salary_to">Зарплата до (руб.)</label>
+                    <input type="number" id="salary_to" name="salary_to" min="0" 
+                           value="{{ vacancy.salary_to if vacancy and vacancy.salary_to else '' }}" placeholder="Например: 80000">
+                </div>
+            </div>
+
+            <!-- Поля для стажировки (даты) -->
+            <div class="form-row internship-fields" {% if not vacancy or not vacancy.is_internship %}style="display: none;"{% endif %}>
+                <div class="form-group">
+                    <label for="start">Дата начала</label>
+                    <input type="date" id="start" name="start" value="{{ vacancy.start if vacancy and vacancy.start else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="end">Дата окончания</label>
+                    <input type="date" id="end" name="end" value="{{ vacancy.end if vacancy and vacancy.end else '' }}">
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="chart">График работы *</label>
                 <textarea id="chart" name="chart" rows="3" required
-                    placeholder="График работы, часы, дни недели">{{ vacancy.chart if vacancy else '' }}</textarea>
+                    placeholder="График работы, часы, дни недели">{{ vacancy.chart if vacancy and vacancy.chart else '' }}</textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Местоположение</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="city">Город</label>
+                    <input type="text" id="city" name="city" value="{{ vacancy.city if vacancy and vacancy.city else '' }}" 
+                           placeholder="Например: Москва">
+                </div>
+
+                <div class="form-group">
+                    <label for="metro_station">Станция метро</label>
+                    <input type="text" id="metro_station" name="metro_station" 
+                           value="{{ vacancy.metro_station if vacancy and vacancy.metro_station else '' }}" 
+                           placeholder="Например: Парк культуры">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Адрес</label>
+                <textarea id="address" name="address" rows="2" 
+                          placeholder="Полный адрес офиса или места работы">{{ vacancy.address if vacancy and vacancy.address else '' }}</textarea>
             </div>
         </div>
 
@@ -117,8 +179,16 @@
             <h3>Контактная информация</h3>
 
             <div class="form-group">
+                <label for="company_name">Название компании *</label>
+                <input type="text" id="company_name" name="company_name" required 
+                       value="{{ vacancy.company_name if vacancy and vacancy.company_name else '' }}" 
+                       placeholder="Введите название компании">
+            </div>
+
+            <div class="form-group">
                 <label for="contact_person">Контактное лицо *</label>
-                <input type="text" id="contact_person" name="contact_person" required value="{{ vacancy.contact_person if vacancy else '' }}" placeholder="Информация о контактном лице (ФИО, телефон, email и т.д.)">
+                <textarea id="contact_person" name="contact_person" rows="3" required 
+                          placeholder="ФИО контактного лица&#10;Телефон: +7 (XXX) XXX-XX-XX&#10;Email: example@company.com">{{ vacancy.contact_person if vacancy and vacancy.contact_person else '' }}</textarea>
             </div>
         </div>
 
@@ -130,14 +200,14 @@
                     <input type="checkbox" id="is_hidden" name="is_hidden" {% if vacancy and vacancy.is_hidden
                         %}checked{% endif %}>
                     <span class="checkmark"></span>
-                    Скрыть вакансию (не показывать публично)
+                    Скрыть {% if not vacancy or not vacancy.is_internship %}вакансию{% else %}стажировку{% endif %} (не показывать публично)
                 </label>
             </div>
         </div>
 
         <div class="form-actions">
             <button type="submit" class="btn-submit">
-                {% if is_edit %}Сохранить изменения{% else %}Создать вакансию{% endif %}
+                {% if is_edit %}Сохранить изменения{% else %}Создать {% if not vacancy or not vacancy.is_internship %}вакансию{% else %}стажировку{% endif %}{% endif %}
             </button>
             <a href="{{ url_for('panel.vacancies_list') }}" class="btn-cancel">Отмена</a>
         </div>

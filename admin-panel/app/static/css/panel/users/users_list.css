@@ -111,8 +111,6 @@
     border: 2px solid #636363;
     border-radius: 24px;
     padding: 24px;
-    display: flex;
-    gap: 20px;
     transition: all 0.3s ease;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
@@ -145,17 +143,11 @@
     border: 2px solid #e9ecef;
 }
 
-.user-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
 .user-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    gap: 20px;
 }
 
 .user-info {
@@ -166,12 +158,19 @@
     font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
-    margin-bottom: 4px;
+    margin: 0 0 8px 0;
 }
 
 .user-name em {
     color: #95a5a6;
     font-style: italic;
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
 .user-email {
@@ -181,51 +180,38 @@
 }
 
 .user-status {
-    flex-shrink: 0;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .status-superuser {
     background: #e74c3c;
     color: white;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 500;
 }
 
 .status-recruiter {
     background: #3498db;
     color: white;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 500;
 }
 
 .status-admin {
     background: #27ae60;
     color: white;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 500;
 }
 
 .status-pending {
     background: #f39c12;
     color: white;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.user-meta {
-    flex: 1;
 }
 
 .user-dates {
@@ -238,53 +224,58 @@
 .updated-date {
     font-size: 12px;
     color: #95a5a6;
-    font-weight: 500;
 }
 
 .user-actions {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    justify-content: center;
+    flex-shrink: 0;
 }
 
 .btn-resend, .btn-delete {
-    border: none;
-    border-radius: 8px;
-    padding: 8px 12px;
+    background: none;
+    border: 2px solid #636363;
+    border-radius: 12px;
+    padding: 8px 16px;
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+    gap: 6px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: #636363;
 }
 
 .btn-resend {
-    background: #3498db;
-    color: white;
+    background: #f8f9fa;
 }
 
 .btn-resend:hover {
-    background: #2980b9;
+    background: #e9ecef;
+    transform: translateY(-2px);
 }
 
 .btn-delete {
-    background: #e74c3c;
-    color: white;
+    background: #fff5f5;
+    border-color: #e53e3e;
+    color: #e53e3e;
 }
 
 .btn-delete:hover {
-    background: #c0392b;
+    background: #fed7d7;
+    transform: translateY(-2px);
 }
 
 /* Состояние без пользователей */
 .no-users {
     text-align: center;
     padding: 60px 20px;
-    color: #7f8c8d;
+    background: #ffffff;
+    border: 2px solid #636363;
+    border-radius: 24px;
 }
 
 .no-users-icon {
@@ -293,15 +284,15 @@
 }
 
 .no-users-text {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    margin-bottom: 8px;
     color: #2c3e50;
+    margin-bottom: 8px;
 }
 
 .no-users-subtext {
     font-size: 14px;
-    color: #95a5a6;
+    color: #7f8c8d;
 }
 
 /* Модальное окно */
@@ -320,35 +311,33 @@
     background-color: #ffffff;
     margin: 5% auto;
     padding: 0;
-    border: 2px solid #636363;
     border-radius: 24px;
     width: 90%;
     max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 24px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 24px 24px 0 24px;
+    border-bottom: none;
 }
 
 .modal-header h2 {
-    margin: 0;
     font-size: 20px;
-    color: #2c3e50;
     font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
 }
 
 .close {
-    color: #7f8c8d;
+    color: #95a5a6;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: color 0.3s ease;
 }
 
 .close:hover {
@@ -366,15 +355,15 @@
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    font-size: 14px;
     font-weight: 500;
     color: #2c3e50;
-    font-size: 14px;
+    margin-bottom: 8px;
 }
 
 .form-group input[type="email"] {
     width: 100%;
-    padding: 12px;
+    padding: 12px 16px;
     border: 2px solid #e9ecef;
     border-radius: 12px;
     font-size: 14px;
@@ -394,38 +383,14 @@
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     cursor: pointer;
     font-size: 14px;
     color: #2c3e50;
 }
 
 .checkbox-label input[type="checkbox"] {
-    display: none;
-}
-
-.checkbox-label .checkmark {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #636363;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkmark {
-    background: #636363;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
+    accent-color: #636363;
 }
 
 .form-actions {
@@ -437,21 +402,22 @@
 
 .btn-cancel, .btn-save {
     padding: 12px 24px;
-    border: none;
     border-radius: 12px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
+    border: none;
 }
 
 .btn-cancel {
-    background: #95a5a6;
-    color: white;
+    background: #f8f9fa;
+    color: #636363;
+    border: 2px solid #e9ecef;
 }
 
 .btn-cancel:hover {
-    background: #7f8c8d;
+    background: #e9ecef;
 }
 
 .btn-save {
@@ -461,6 +427,19 @@
 
 .btn-save:hover {
     background: #4a4a4a;
+    transform: translateY(-2px);
+}
+
+.btn-save:disabled {
+    background: #95a5a6;
+    color: #7f8c8d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-save:disabled:hover {
+    background: #95a5a6;
+    transform: none;
 }
 
 /* Адаптивность */
@@ -468,41 +447,31 @@
     .users-container {
         padding: 16px;
     }
-    
+
     .users-header {
         flex-direction: column;
         gap: 16px;
         align-items: stretch;
     }
-    
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
     }
-    
+
     .user-card {
-        flex-direction: column;
-        gap: 16px;
+        padding: 16px;
     }
-    
-    .user-avatar {
-        align-self: center;
-    }
-    
+
     .user-header {
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
     }
-    
-    .user-status {
-        align-items: flex-start;
-    }
-    
+
     .user-actions {
         flex-direction: row;
-        justify-content: center;
+        justify-content: flex-start;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;
@@ -513,8 +482,48 @@
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .user-actions {
         flex-direction: column;
+    }
+}
+
+.users-stats .stat-card {
+    min-width: 200px;
+    max-width: none;
+    flex: 1 1 auto;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.users-stats .stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    word-break: break-all;
+    line-height: 1.1;
+}
+
+.users-stats .stat-label {
+    font-size: 14px;
+    color: #636363;
+    word-break: break-word;
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+    text-align: left;
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 900px) {
+    .users-stats .stat-card {
+        min-width: 180px;
+        max-width: none;
+        padding: 20px;
+    }
+    .users-stats .stat-label {
+        font-size: 13px;
+    }
+    .users-stats .stat-number {
+        font-size: 24px;
     }
 }

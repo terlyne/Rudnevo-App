@@ -1,16 +1,25 @@
-h1 {
-    display: flex;
-    justify-content: center;
-    font-size: 24px;
-    margin-bottom: 20px;
-}
-
 .vacancies-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 30px;
-    padding: 0 200px;
+}
+
+.header-content {
+    flex: 1;
+}
+
+.vacancies-header h1 {
+    font-size: 28px;
+    color: #2c3e50;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.header-subtitle {
+    color: #7f8c8d;
+    font-size: 15px;
+    font-weight: 400;
 }
 
 .vacancies-controls {
@@ -20,17 +29,27 @@ h1 {
 }
 
 .btn-create {
-    background: #3498db;
+    background: #636363;
     color: white;
-    padding: 10px 20px;
-    border-radius: 6px;
-    text-decoration: none;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-size: 14px;
     font-weight: 500;
-    transition: background-color 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
 }
 
 .btn-create:hover {
-    background: #2980b9;
+    background: #4a4a4a;
+    transform: translateY(-2px);
+}
+
+.btn-icon {
+    font-size: 16px;
 }
 
 .filter-controls {
@@ -49,8 +68,7 @@ h1 {
 }
 
 .filter-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    display: inline-block;
 }
 
 .vacancies-container {
@@ -87,17 +105,17 @@ h1 {
 }
 
 .vacancy-item {
-    padding: 20px;
+    padding: 24px;
     background: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid #636363;
+    border-radius: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
 }
 
 .vacancy-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .vacancy-header {
@@ -122,22 +140,40 @@ h1 {
 .vacancy-status {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+}
+
+.vacancy-type {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.vacancy-type.job {
+    background: #3498db;
+    color: white;
+}
+
+.vacancy-type.internship {
+    background: #9b59b6;
+    color: white;
 }
 
 .status-active {
     background: #27ae60;
     color: white;
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
 }
 
 .status-hidden {
-    background: #95a5a6;
+    background: #e74c3c;
     color: white;
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
 }
@@ -146,44 +182,60 @@ h1 {
     background: #e74c3c;
     color: white;
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
 }
 
 .vacancy-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-}
-
-.btn-applications, .btn-edit, .btn-delete {
-    padding: 8px 16px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
 }
 
 .btn-applications {
     background: #9b59b6;
     color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    text-decoration: none;
 }
 
 .btn-applications:hover {
     background: #8e44ad;
+    text-decoration: none;
+    color: white;
+}
+
+.btn-edit,
+.btn-delete {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
 }
 
 .btn-edit {
-    background: #f39c12;
+    background: #3498db;
     color: white;
 }
 
 .btn-edit:hover {
-    background: #e67e22;
+    background: #2980b9;
 }
 
 .btn-delete {
@@ -198,76 +250,65 @@ h1 {
 .vacancy-details {
     display: flex;
     gap: 16px;
-    font-size: 12px;
-    color: #7f8c8d;
-    flex-wrap: wrap;
-}
-
-.vacancy-detail {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.detail-icon {
-    font-size: 14px;
+    margin-bottom: 20px;
 }
 
 .vacancy-info {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .info-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 .info-label {
     font-weight: 500;
-    color: #7f8c8d;
-    min-width: 140px;
+    color: #666;
+    min-width: 120px;
+    flex-shrink: 0;
 }
 
 .info-value {
     color: #2c3e50;
-    text-align: right;
     flex: 1;
 }
 
 .vacancy-statistics {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
 }
 
 .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px;
     background: #f8f9fa;
+    padding: 12px;
     border-radius: 8px;
     text-align: center;
 }
 
 .stat-label {
+    display: block;
     font-size: 12px;
-    color: #7f8c8d;
+    color: #666;
     margin-bottom: 4px;
 }
 
 .stat-value {
+    display: block;
     font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
@@ -294,62 +335,65 @@ h1 {
 }
 
 .vacancy-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
 }
 
 .progress-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 8px;
     font-size: 14px;
-    color: #7f8c8d;
+    color: #666;
 }
 
 .progress-bar {
     width: 100%;
     height: 8px;
-    background: #ecf0f1;
+    background: #e0e0e0;
     border-radius: 4px;
     overflow: hidden;
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3498db, #27ae60);
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
     transition: width 0.3s ease;
 }
 
 .vacancy-description {
-    border-top: 1px solid #f0f0f0;
-    padding-top: 20px;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
 }
 
 .vacancy-description h4 {
     font-size: 16px;
     font-weight: 600;
     color: #2c3e50;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
 }
 
 .vacancy-description p {
-    color: #7f8c8d;
+    font-size: 14px;
+    color: #666;
     line-height: 1.5;
     margin: 0;
 }
 
 @media (max-width: 1200px) {
+
     .vacancies-header,
     .vacancies-container {
-        margin: 0 100px;
+        padding: 0 100px;
     }
-    
+
     .vacancy-details {
-        grid-template-columns: 1fr;
-        gap: 20px;
+        flex-direction: column;
     }
-    
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -359,23 +403,145 @@ h1 {
     .vacancies-header {
         flex-direction: column;
         gap: 15px;
-        align-items: stretch;
+        text-align: center;
     }
-    
+
     .vacancies-controls {
-        justify-content: space-between;
+        flex-direction: column;
+        gap: 10px;
     }
-    
+
     .vacancy-header {
         flex-direction: column;
-        align-items: stretch;
+        gap: 15px;
     }
-    
+
     .vacancy-actions {
         justify-content: center;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr;
     }
-} 
+}
+
+/* Статистика */
+.vacancies-stats {
+    margin-bottom: 30px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: #ffffff;
+    border: 2px solid #636363;
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    font-size: 32px;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 16px;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+/* Скрытые вакансии */
+.vacancy-item.hidden {
+    opacity: 0.6 !important;
+    position: relative;
+    filter: grayscale(20%);
+}
+
+.vacancy-item.hidden:hover {
+    opacity: 0.8 !important;
+    filter: grayscale(10%);
+}
+
+/* Список вакансий */
+.vacancies-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 0;
+}
+
+.no-vacancies {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+}
+
+.no-vacancies-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.no-vacancies-text {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.no-vacancies-subtext {
+    font-size: 14px;
+    color: #95a5a6;
+}
+
+.access-denied {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+}
+
+.access-denied h2 {
+    color: #e74c3c;
+    margin-bottom: 16px;
+    font-size: 24px;
+}
+
+.access-denied p {
+    color: #636363;
+    font-size: 16px;
+    margin: 0;
+}

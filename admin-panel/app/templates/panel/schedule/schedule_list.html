@@ -20,59 +20,56 @@
     </div>
 
     <div class="schedule-list">
-        {% if schedules %}
-            {% for schedule in schedules %}
-            <div class="schedule-card">
-                <div class="schedule-header-info">
-                    <div class="schedule-title">
-                        <h3>{{ schedule.title }}</h3>
-                        <div class="schedule-date">
-                            <span class="date-icon">📅</span>
-                            {{ schedule.date }}
-                            {% if schedule.time %}
-                                <span class="time-separator">•</span>
-                                <span class="time">{{ schedule.time }}</span>
+        {% for schedule_item in schedule %}
+        <div class="schedule-card {% if schedule_item.is_hidden %}hidden{% endif %}">
+            <div class="schedule-header">
+                <div class="schedule-info">
+                    <h3 class="schedule-title">{{ schedule_item.title }}</h3>
+                    <div class="schedule-meta">
+                        <span class="schedule-date">{{ schedule_item.date }}</span>
+                        <span class="schedule-time">{{ schedule_item.time }}</span>
+                        <div class="schedule-status">
+                            {% if schedule_item.is_hidden %}
+                                <span class="status-hidden">Скрыто</span>
+                            {% else %}
+                                <span class="status-visible">Опубликовано</span>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="schedule-actions">
-                        <form method="POST" action="{{ url_for('panel.schedule_edit', schedule_id=schedule.id) }}" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                            <button type="submit" class="btn-edit" onclick="return editSchedule({{ schedule.id }})">
-                                <span class="btn-icon">✏️</span>
-                                Редактировать
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ url_for('panel.schedule_delete', schedule_id=schedule.id) }}" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                            <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить это событие? Это действие нельзя отменить.')">
-                                <span class="btn-icon">🗑️</span>
-                                Удалить
-                            </button>
-                        </form>
-                    </div>
                 </div>
-                
-                {% if schedule.description %}
-                <div class="schedule-description">
-                    <p>{{ schedule.description }}</p>
+                <div class="schedule-actions">
+                    <button type="button" class="btn-edit" onclick="return editSchedule({{ schedule_item.id }})">
+                        <span class="btn-icon">✏️</span>
+                        Редактировать
+                    </button>
+                    <form method="POST" action="{{ url_for('panel.schedule_toggle_visibility', schedule_id=schedule_item.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-toggle" onclick="return confirm('Вы уверены, что хотите изменить видимость события?')">
+                            <span class="btn-icon">👁️</span>
+                            {% if schedule_item.is_hidden %}Показать{% else %}Скрыть{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('panel.schedule_delete', schedule_id=schedule_item.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить это событие? Это действие нельзя отменить.')">
+                            <span class="btn-icon">🗑️</span>
+                            Удалить
+                        </button>
+                    </form>
                 </div>
-                {% endif %}
-                
-                {% if schedule.location %}
-                <div class="schedule-location">
-                    <span class="location-icon">📍</span>
-                    <span>{{ schedule.location }}</span>
-                </div>
-                {% endif %}
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="no-schedules">
-                <div class="no-schedules-icon">📅</div>
-                <div class="no-schedules-text">Событий в расписании пока нет</div>
-                <div class="no-schedules-subtext">Создайте первое событие, нажав кнопку "Создать событие"</div>
+            <div class="schedule-content">
+                <p>{{ schedule_item.description }}</p>
             </div>
+        </div>
+        {% endfor %}
+        
+        {% if not schedule %}
+        <div class="no-schedule">
+            <div class="no-schedule-icon">📅</div>
+            <div class="no-schedule-text">Событий пока нет</div>
+            <div class="no-schedule-subtext">Создайте первое событие, нажав кнопку "Создать событие"</div>
+        </div>
         {% endif %}
     </div>
 </div>

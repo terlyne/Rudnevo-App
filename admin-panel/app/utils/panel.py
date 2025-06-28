@@ -47,6 +47,7 @@ def get_navigation_elements() -> dict[str, dict]:
     # Для рекрутеров (но не суперпользователей) оставляем ТОЛЬКО вакансии
     elif current_user["is_recruiter"]:
         nav_items = {"panel.vacancies_list": "Вакансии"}
+    # Для обычных администраторов оставляем базовые элементы (без вакансий и пользователей)
 
     return {
         endpoint: {"text": text, "is_active": endpoint == current_endpoint}

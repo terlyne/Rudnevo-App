@@ -13,7 +13,7 @@
 <div class="users-container">
     <div class="users-header">
         <h1>Пользователи</h1>
-        <button class="btn-invite" onclick="inviteUser()">
+        <button class="btn-invite" onclick="openInviteModal()">
             <span class="btn-icon">📧</span>
             Пригласить пользователя
         </button>
@@ -32,14 +32,21 @@
                 <div class="stat-icon">👑</div>
                 <div class="stat-content">
                     <div class="stat-number">{{ users|selectattr('is_superuser', 'equalto', True)|list|length }}</div>
-                    <div class="stat-label">Суперпользователей</div>
+                    <div class="stat-label">Супер-администраторов</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">💼</div>
                 <div class="stat-content">
                     <div class="stat-number">{{ users|selectattr('is_recruiter', 'equalto', True)|list|length }}</div>
-                    <div class="stat-label">Рекрутеров</div>
+                    <div class="stat-label">Работодателей</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👨‍💼</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ users|selectattr('is_superuser', 'equalto', False)|selectattr('is_recruiter', 'equalto', False)|list|length }}</div>
+                    <div class="stat-label">Администраторов</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -53,77 +60,66 @@
     </div>
 
     <div class="users-list">
-        {% if users %}
-            {% for user in users %}
-            <div class="user-card {% if not user.is_registered %}pending{% endif %}">
-                <div class="user-avatar">
-                    <div class="avatar-placeholder">
-                        {% if user.is_superuser %}
-                            👑
-                        {% elif user.is_recruiter %}
-                            💼
+        {% for user in users %}
+        <div class="user-card">
+            <div class="user-header">
+                <div class="user-info">
+                    <h3 class="user-name">
+                        {% if user.username %}
+                            {{ user.username }}
                         {% else %}
-                            👤
+                            {{ user.email }}
+                        {% endif %}
+                    </h3>
+                    <div class="user-meta">
+                        <span class="user-email">{{ user.email }}</span>
+                        <div class="user-status">
+                            {% if user.is_superuser %}
+                                <span class="status-badge status-superuser">Супер-администратор</span>
+                            {% elif user.is_recruiter %}
+                                <span class="status-badge status-recruiter">Работодатель</span>
+                            {% else %}
+                                <span class="status-badge status-admin">Администратор</span>
+                            {% endif %}
+                            {% if not user.is_registered %}
+                                <span class="status-badge status-pending">Ожидает регистрации</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="user-dates">
+                        <span class="created-date">Создан: {{ user.created_at }}</span>
+                        {% if user.updated_at %}
+                            <span class="updated-date">Обновлен: {{ user.updated_at }}</span>
                         {% endif %}
                     </div>
                 </div>
-                
-                <div class="user-content">
-                    <div class="user-header">
-                        <div class="user-info">
-                            <div class="user-name">
-                                {% if user.username %}
-                                    {{ user.username }}
-                                {% else %}
-                                    <em>Не зарегистрирован</em>
-                                {% endif %}
-                            </div>
-                            <div class="user-email">{{ user.email }}</div>
-                        </div>
-                        <div class="user-status">
-                            {% if user.is_superuser %}
-                                <span class="status-superuser">Суперпользователь</span>
-                            {% elif user.is_recruiter %}
-                                <span class="status-recruiter">Рекрутер</span>
-                            {% else %}
-                                <span class="status-admin">Администратор</span>
-                            {% endif %}
-                            
-                            {% if not user.is_registered %}
-                                <span class="status-pending">Ожидает регистрации</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="user-meta">
-                        <div class="user-dates">
-                            {% if user.created_at %}
-                                <span class="created-date">Создан: {{ user.created_at }}</span>
-                            {% endif %}
-                            {% if user.is_registered and user.updated_at %}
-                                <span class="updated-date">Обновлен: {{ user.updated_at }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                
                 <div class="user-actions">
-                    <form method="POST" action="{{ url_for('panel.user_delete', user_id=user.id) }}" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить.')">
-                            <span class="btn-icon">🗑️</span>
-                            Удалить
+                    {% if not user.is_registered %}
+                        <button type="button" class="btn-resend" onclick="resendInvite('{{ user.email }}')">
+                            <span class="btn-icon">📧</span>
+                            Повторно отправить
                         </button>
-                    </form>
+                    {% endif %}
+                    {% if user.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('panel.user_delete', user_id=user.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                            <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить.')">
+                                <span class="btn-icon">🗑️</span>
+                                Удалить
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="no-users">
-                <div class="no-users-icon">👥</div>
-                <div class="no-users-text">Пользователей пока нет</div>
-                <div class="no-users-subtext">Пригласите первого пользователя, нажав кнопку "Пригласить пользователя"</div>
-            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not users %}
+        <div class="no-users">
+            <div class="no-users-icon">👥</div>
+            <div class="no-users-text">Пользователей пока нет</div>
+            <div class="no-users-subtext">Пользователи появятся здесь после регистрации</div>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -145,7 +141,7 @@
                 <label class="checkbox-label">
                     <input type="checkbox" id="is_recruiter" name="is_recruiter">
                     <span class="checkmark"></span>
-                    Рекрутер (доступ к вакансиям)
+                    Работодатель (доступ только к вакансиям)
                 </label>
             </div>
             <div class="form-actions">

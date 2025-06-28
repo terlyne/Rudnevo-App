@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Union
 import os
 
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_admin_or_superuser
 from app.crud import news as news_crud
 from app.db.session import get_async_session
 from app.models.user import User
@@ -21,18 +21,13 @@ async def read_news(
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
     """Получить список новостей"""
-    # Для администраторов показываем все новости (включая скрытые) или по параметру
-    # Для обычных пользователей только видимые новости
-    if current_user.is_superuser:
-        show_hidden_param = show_hidden
-    else:
-        show_hidden_param = False
-    
+    # Для всех администраторов (супер-администраторов и обычных администраторов) 
+    # показываем все новости (включая скрытые) или по параметру
     return await news_crud.get_news_list(
-        db, skip=skip, limit=limit, show_hidden=show_hidden_param
+        db, skip=skip, limit=limit, show_hidden=show_hidden
     )
 
 
@@ -41,15 +36,9 @@ async def read_hidden_news(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
     """Получить список скрытых новостей (только для администраторов)"""
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
-
     return await news_crud.get_news_list(db, skip=skip, limit=limit, show_hidden=True)
 
 
@@ -72,19 +61,12 @@ async def create_news_item(
     content: str = Form(...),
     is_hidden: bool = Form(False),
     image: Union[UploadFile, None, str] = File(None),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_admin_or_superuser)
 ):
     """Создать новость с возможностью загрузки изображения (только для администраторов)"""
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
-    
     if isinstance(image, str) and image == "":
         image = None
     
-
     # Сохраняем изображение, если оно предоставлено
     image_url = None
     if image:
@@ -107,15 +89,9 @@ async def update_news_item(
     is_hidden: bool = Form(None),
     image: Optional[UploadFile] = File(None),
     remove_image: str = Form(None),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_admin_or_superuser)
 ):
     """Обновить новость с возможностью обновления изображения (только для администраторов)"""
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
-
     # Сохраняем новое изображение, если оно предоставлено
     image_url = None
     if image:
@@ -140,14 +116,9 @@ async def delete_news_item(
     *,
     db: AsyncSession = Depends(get_async_session),
     news_id: int,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_admin_or_superuser)
 ):
     """Удалить новость (только для администраторов)"""
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
     if not await news_crud.delete_news(db=db, news_id=news_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Новость не найдена."
@@ -160,14 +131,9 @@ async def toggle_news_visibility(
     *,
     db: AsyncSession = Depends(get_async_session),
     news_id: int,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_admin_or_superuser)
 ):
     """Переключить видимость новости (только для администраторов)"""
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
     news = await news_crud.toggle_news_visibility(db=db, news_id=news_id)
     if not news:
         raise HTTPException(

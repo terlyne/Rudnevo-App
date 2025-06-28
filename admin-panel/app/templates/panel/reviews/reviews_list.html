@@ -6,11 +6,11 @@
 
 {% block styles %}
 {{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/reviews/reviews_list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/reviews/reviews_list.css', v='1.1') }}">
 {% endblock %}
 
 {% block container %}
-<div class="reviews-container" data-is-superuser="{{ 'true' if current_user.is_superuser else 'false' }}">
+<div class="reviews-container">
     <div class="reviews-header">
         <div class="header-content">
             <h1>Отзывы</h1>
@@ -33,7 +33,7 @@
             </div>
             {% if current_user.is_superuser %}
             <div class="stat-card">
-                <div class="stat-icon">👍</div>
+                <div class="stat-icon">✅</div>
                 <div class="stat-content">
                     <div class="stat-number">{{ reviews|selectattr('is_approved', 'equalto', True)|list|length }}</div>
                     <div class="stat-label">Одобренных</div>
@@ -50,92 +50,90 @@
         </div>
     </div>
 
-    {% if current_user.is_superuser %}
-    <div class="reviews-filters">
-        <label class="filter-checkbox">
-            <input type="checkbox" id="showHidden" onchange="toggleHiddenReviews()">
-            <span class="checkmark"></span>
-            Показать скрытые отзывы
-        </label>
-    </div>
-    {% endif %}
-
     <div class="reviews-list">
-        {% if reviews %}
-            {% for review in reviews %}
-            <div class="review-card {% if not review.is_approved %}pending hidden{% endif %}">
-                <div class="review-header">
-                    <div class="review-meta">
-                        <div class="review-author">
-                            <span class="author-name">{{ review.name }}</span>
-                            <span class="author-email">{{ review.email }}</span>
-                        </div>
-                        <div class="review-date">{{ review.created_at }}</div>
-                    </div>
-                    {% if current_user.is_superuser %}
-                    <div class="review-status">
-                        {% if review.is_approved %}
-                        <span class="status-approved">Одобрен</span>
-                        {% else %}
-                        <span class="status-pending">На модерации</span>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+        <!-- DEBUG: Total reviews: {{ reviews|length }} -->
+        {% for review in reviews %}
+        <!-- DEBUG: Review ID: {{ review.id }}, is_approved: {{ review.is_approved }}, name: {{ review.name }}, class: {% if not review.is_approved %}hidden{% else %}visible{% endif %} -->
+        <div class="review-card {% if not review.is_approved %}hidden{% endif %}">
+            <div class="review-avatar">
+                <div class="avatar-placeholder">
+                    <span>⭐</span>
                 </div>
-                <div class="review-content">
-                    <div class="review-rating">
-                        <span class="rating-label">Рейтинг:</span>
-                        <div class="rating-display">
+            </div>
+            <div class="review-content">
+                <div class="review-header-info">
+                    <div class="review-title-section">
+                        <div class="review-rating-display">
                             {% for i in range(5) %}
                                 {% if i < review.rating %}
-                                    <span class="star-display">★</span>
+                                    <span class="star-display filled">★</span>
                                 {% else %}
-                                    <span class="star-display">☆</span>
+                                    <span class="star-display empty">☆</span>
                                 {% endif %}
                             {% endfor %}
                         </div>
+                        <h3 class="review-title">
+                            <span>{{ review.name or review.author_name }}</span>
+                        </h3>
                     </div>
-                    <div class="review-text">
-                        <h3>Отзыв:</h3>
-                        <p>{{ review.review }}</p>
-                    </div>
-                </div>
-                <div class="review-actions">
-                    <form method="POST" action="{{ url_for('panel.review_toggle_visibility', review_id=review.id) }}" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                        <input type="hidden" name="show_hidden" value="{% if request.args.get('show_hidden') == 'true' %}true{% else %}false{% endif %}"/>
+                    <div class="review-status">
                         {% if review.is_approved %}
-                        <button type="submit" class="btn-edit">
-                            <span class="btn-icon">🙈</span>
-                            Скрыть
-                        </button>
+                            <span class="status-approved">Одобрен</span>
                         {% else %}
-                        <button type="submit" class="btn-edit">
-                            <span class="btn-icon">✅</span>
-                            Одобрить
-                        </button>
+                            <span class="status-pending">На модерации</span>
                         {% endif %}
-                    </form>
-                    <form method="POST" action="{{ url_for('panel.review_delete', review_id=review.id) }}" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.')">
-                            <span class="btn-icon">🗑️</span>
-                            Удалить
-                        </button>
-                    </form>
+                    </div>
+                </div>
+                <div class="review-excerpt">
+                    <span>{{ review.review or review.content }}</span>
+                </div>
+                <div class="review-meta">
+                    <div class="review-author-info">
+                        <span class="review-email">{{ review.email }}</span>
+                        <span class="review-date">{{ review.created_at }}</span>
+                    </div>
+                    <div class="review-actions">
+                        {% if review.is_approved %}
+                            <form method="POST" action="{{ url_for('panel.review_toggle_visibility', review_id=review.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                <button type="submit" class="btn-toggle" onclick="return confirm('Вы уверены, что хотите скрыть этот отзыв?')">
+                                    <span class="btn-icon">👁️</span>
+                                    Скрыть
+                                </button>
+                            </form>
+                        {% else %}
+                            <form method="POST" action="{{ url_for('panel.review_approve', review_id=review.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                                <button type="submit" class="btn-approve" onclick="return confirm('Вы уверены, что хотите одобрить этот отзыв?')">
+                                    <span class="btn-icon">✅</span>
+                                    Одобрить
+                                </button>
+                            </form>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('panel.review_delete', review_id=review.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                            <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.')">
+                                <span class="btn-icon">🗑️</span>
+                                Удалить
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="no-reviews">
-                <div class="no-reviews-icon">⭐</div>
-                <div class="no-reviews-text">Отзывов пока нет</div>
-                <div class="no-reviews-subtext">Создайте первый отзыв, нажав кнопку "Создать отзыв"</div>
-            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not reviews %}
+        <div class="no-reviews">
+            <div class="no-reviews-icon">⭐</div>
+            <div class="no-reviews-text">Отзывов пока нет</div>
+            <div class="no-reviews-subtext">Создайте первый отзыв, нажав кнопку "Создать отзыв"</div>
+        </div>
         {% endif %}
     </div>
 </div>
 
+<!-- Модальное окно для создания отзыва -->
 <div id="reviewModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -160,7 +158,7 @@
                     <span class="star-input" data-rating="2">☆</span>
                     <span class="star-input" data-rating="3">☆</span>
                     <span class="star-input" data-rating="4">☆</span>
-                    <span class="star-input" data-rating="5">★</span>
+                    <span class="star-input" data-rating="5">☆</span>
                 </div>
             </div>
             <div class="form-group">

@@ -3,8 +3,9 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Union
 from datetime import date
+import os
 
-from app.api.deps import get_current_active_recruiter
+from app.api.deps import get_current_admin_or_superuser
 from app.crud import student as student_crud, vacancy as vacancy_crud
 from app.db.session import get_async_session
 from app.models.user import User
@@ -107,19 +108,19 @@ async def read_students(
     vacancy_id: Optional[int] = None,
     status: Optional[ApplicationStatus] = None,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Получить список студентов (только для работодателей и админов)"""
-    if not current_user.is_recruiter and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на просмотр заявок.",
+    """Получить список студентов (только для рекрутеров и супер-администраторов)"""
+    # Супер-администратор может видеть все заявки
+    if current_user.is_superuser:
+        return await student_crud.get_students(
+            db=db, skip=skip, limit=limit, vacancy_id=vacancy_id, status=status
         )
-
-    # Если пользователь работодатель, показываем только заявки на его вакансии
-    if current_user.is_recruiter and not current_user.is_superuser:
+    
+    # Рекрутер может видеть только заявки на свои вакансии
+    if current_user.is_recruiter:
         if vacancy_id:
-            # Проверяем что вакансия принадлежит работодателю
+            # Проверяем что вакансия принадлежит рекрутеру
             vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)
             if not vacancy or vacancy.recruiter_id != current_user.id:
                 raise HTTPException(
@@ -127,7 +128,7 @@ async def read_students(
                     detail="У вас нет прав на просмотр заявок на эту вакансию.",
                 )
         else:
-            # Получаем все вакансии работодателя
+            # Получаем все вакансии рекрутера
             vacancies = await vacancy_crud.get_vacancies(
                 db, recruiter_id=current_user.id
             )
@@ -135,7 +136,7 @@ async def read_students(
             if not vacancy_ids:
                 return []
 
-            # Получаем заявки только на вакансии работодателя
+            # Получаем заявки только на вакансии рекрутера
             students = []
             for vid in vacancy_ids:
                 vacancy_students = await student_crud.get_students_by_vacancy(
@@ -143,9 +144,11 @@ async def read_students(
                 )
                 students.extend(vacancy_students)
             return students[:limit]
-
-    return await student_crud.get_students(
-        db=db, skip=skip, limit=limit, vacancy_id=vacancy_id, status=status
+    
+    # Обычный администратор не имеет доступа к заявкам
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="У вас нет прав на просмотр заявок.",
     )
 
 
@@ -154,67 +157,86 @@ async def read_student(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Получить детали студента"""
-    if not current_user.is_recruiter and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на просмотр заявок.",
-        )
-
+    """Получить детали студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Заявка не найдена."
         )
 
-    # Проверяем права доступа
-    if current_user.is_recruiter and not current_user.is_superuser:
+    # Супер-администратор может видеть любую заявку
+    if current_user.is_superuser:
+        return student
+
+    # Рекрутер может видеть только заявки на свои вакансии
+    if current_user.is_recruiter:
         vacancy = await vacancy_crud.get_vacancy(db, student.vacancy_id)
         if not vacancy or vacancy.recruiter_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="У вас нет прав на просмотр этой заявки.",
             )
+        return student
 
-    return student
+    # Обычный администратор не имеет доступа к заявкам
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="У вас нет прав на просмотр заявок.",
+    )
+
 
 @router.get("/{student_id}/resume-file")
 async def resume_file(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Отправка файла резюме студента"""
-    if not current_user.is_recruiter and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на просмотр заявок.",
-        )
-
+    """Отправка файла резюме студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Заявка не найдена."
         )
-    
-    # Проверяем права доступа
-    if current_user.is_recruiter and not current_user.is_superuser:
+
+    # Супер-администратор может скачать любое резюме
+    if current_user.is_superuser:
+        pass
+    # Рекрутер может скачать только резюме с заявок на свои вакансии
+    elif current_user.is_recruiter:
         vacancy = await vacancy_crud.get_vacancy(db, student.vacancy_id)
         if not vacancy or vacancy.recruiter_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="У вас нет прав на просмотр этой заявки.",
+                detail="У вас нет прав на скачивание этого резюме.",
             )
+    else:
+        # Обычный администратор не имеет доступа к заявкам
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет прав на скачивание резюме.",
+        )
 
     if not student.resume_file:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Для данной заявки не было приложено резюме."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Файл резюме не найден."
         )
-    
-    return FileResponse(student.resume_file)
+
+    # Получаем путь к файлу из URL
+    file_path = os.path.join(settings.MEDIA_ROOT, student.resume_file.lstrip("/media/"))
+
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Файл резюме не найден."
+        )
+
+    return FileResponse(
+        file_path,
+        media_type="application/octet-stream",
+        filename=f"resume_{student.full_name.replace(' ', '_')}.pdf",
+    )
 
 
 @router.put("/{student_id}", response_model=StudentResponse)
@@ -223,29 +245,32 @@ async def update_student(
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
     student_in: StudentUpdate,
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Обновить данные студента"""
-    if not current_user.is_recruiter and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на редактирование заявок.",
-        )
-
+    """Обновить данные студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Заявка не найдена."
         )
 
-    # Проверяем права доступа
-    if current_user.is_recruiter and not current_user.is_superuser:
+    # Супер-администратор может редактировать любую заявку
+    if current_user.is_superuser:
+        pass
+    # Рекрутер может редактировать только заявки на свои вакансии
+    elif current_user.is_recruiter:
         vacancy = await vacancy_crud.get_vacancy(db, student.vacancy_id)
         if not vacancy or vacancy.recruiter_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="У вас нет прав на редактирование этой заявки.",
             )
+    else:
+        # Обычный администратор не имеет доступа к заявкам
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет прав на редактирование заявок.",
+        )
 
     updated_student = await student_crud.update_student(
         db=db,
@@ -261,17 +286,14 @@ async def bulk_update_student_status(
     *,
     db: AsyncSession = Depends(get_async_session),
     bulk_update: StudentBulkStatusUpdate,
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Массовое обновление статусов студентов"""
-    if not current_user.is_recruiter and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на массовое обновление статусов.",
-        )
-
-    # Проверяем права доступа для работодателей
-    if current_user.is_recruiter and not current_user.is_superuser:
+    """Массовое обновление статусов студентов (только для рекрутеров и супер-администраторов)"""
+    # Супер-администратор может обновлять любые заявки
+    if current_user.is_superuser:
+        pass
+    # Рекрутер может обновлять только заявки на свои вакансии
+    elif current_user.is_recruiter:
         for student_id in bulk_update.student_ids:
             student = await student_crud.get_student(db, student_id)
             if student:
@@ -281,6 +303,12 @@ async def bulk_update_student_status(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=f"У вас нет прав на обновление заявки {student_id}.",
                     )
+    else:
+        # Обычный администратор не имеет доступа к заявкам
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет прав на массовое обновление статусов.",
+        )
 
     updated_count = await student_crud.bulk_update_status(
         db=db, student_ids=bulk_update.student_ids, status=bulk_update.status
@@ -294,9 +322,9 @@ async def delete_student(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_active_recruiter),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Удалить заявку студента"""
+    """Удалить заявку студента (только для супер-администраторов)"""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

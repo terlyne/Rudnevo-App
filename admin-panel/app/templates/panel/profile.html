@@ -36,9 +36,11 @@
                 <span class="field-label">Роль:</span>
                 <span class="field-value">
                     {% if user.is_superuser %}
-                        <span class="role-badge role-admin">Администратор</span>
+                        <span class="role-badge role-superuser">Супер-администратор</span>
+                    {% elif user.is_recruiter %}
+                        <span class="role-badge role-recruiter">Работодатель</span>
                     {% else %}
-                        <span class="role-badge role-user">Пользователь</span>
+                        <span class="role-badge role-admin">Администратор</span>
                     {% endif %}
                 </span>
             </div>

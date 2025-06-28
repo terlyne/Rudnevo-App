@@ -1,5 +1,6 @@
-from sqlalchemy import String
+from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import func
 
 from app.models.base import Base
 from app.db.custom_types import str_uniq
@@ -18,6 +19,8 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(default=False)
     is_registered: Mapped[bool] = mapped_column(default=False)
     is_recruiter: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     vacancies: Mapped[list["Vacancy"]] = relationship(
         "Vacancy", back_populates="recruiter"

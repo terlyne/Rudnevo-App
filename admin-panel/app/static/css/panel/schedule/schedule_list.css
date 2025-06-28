@@ -109,7 +109,8 @@
     flex-shrink: 0;
 }
 
-.btn-edit, .btn-delete {
+.btn-edit,
+.btn-delete {
     border: none;
     border-radius: 8px;
     padding: 8px 12px;
@@ -165,25 +166,25 @@
 }
 
 /* Состояние без событий */
-.no-schedules {
+.no-schedule {
     text-align: center;
     padding: 60px 20px;
     color: #7f8c8d;
 }
 
-.no-schedules-icon {
+.no-schedule-icon {
     font-size: 48px;
     margin-bottom: 16px;
 }
 
-.no-schedules-text {
+.no-schedule-text {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 8px;
     color: #2c3e50;
 }
 
-.no-schedules-subtext {
+.no-schedule-subtext {
     font-size: 14px;
     color: #95a5a6;
 }
@@ -289,7 +290,8 @@
     margin-top: 24px;
 }
 
-.btn-cancel, .btn-save {
+.btn-cancel,
+.btn-save {
     padding: 12px 24px;
     border: none;
     border-radius: 12px;
@@ -322,22 +324,22 @@
     .schedule-container {
         padding: 16px;
     }
-    
+
     .schedule-header {
         flex-direction: column;
         gap: 16px;
         align-items: stretch;
     }
-    
+
     .schedule-header-info {
         flex-direction: column;
         gap: 16px;
     }
-    
+
     .schedule-actions {
         justify-content: center;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
+from datetime import datetime
 
 
 class UserBase(BaseModel):
@@ -45,6 +46,8 @@ class UserInDB(UserBase):
     """Схема пользователя из БД"""
 
     id: int
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

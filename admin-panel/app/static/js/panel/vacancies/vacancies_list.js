@@ -12,12 +12,6 @@ function closeVacancyModal() {
     document.getElementById('vacancyForm').reset();
 }
 
-function editVacancy(vacancyId) {
-    // Перенаправляем на страницу редактирования
-    window.location.href = `/panel/vacancies/${vacancyId}/edit`;
-    return false;
-}
-
 // Закрытие модального окна при клике вне его
 window.onclick = function(event) {
     const modal = document.getElementById('vacancyModal');
@@ -58,19 +52,4 @@ function deleteVacancy(vacancyId) {
         form.action = `/vacancies/${vacancyId}/delete`;
         form.submit();
     }
-}
-
-// Функции для работы с вакансиями
-
-function toggleHiddenVacancies() {
-    const showHidden = document.getElementById('showHidden').checked;
-    const hiddenItems = document.querySelectorAll('.vacancy-item.hidden');
-    
-    hiddenItems.forEach(item => {
-        if (showHidden) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
-    });
 }

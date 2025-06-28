@@ -33,9 +33,6 @@ def home():
                     filtered_actions.append(action)
             filtered_actions = filtered_actions[:10]
             
-            # Получаем параметр show_hidden из URL
-            show_hidden = request.args.get("show_hidden", "false").lower() == "true"
-            
             # Получаем статистику
             stats = {
                 "news_count": 0,
@@ -45,10 +42,7 @@ def home():
             }
             
             try:
-                if current_user and current_user.get("is_superuser") and show_hidden:
-                    news = api_client.get_news(show_hidden=True)
-                else:
-                    news = api_client.get_news(show_hidden=False)
+                news = api_client.get_news(show_hidden=True)
                 stats["news_count"] = len(news)
             except:
                 pass
@@ -60,10 +54,7 @@ def home():
                 pass
                 
             try:
-                if current_user and current_user.get("is_superuser") and show_hidden:
-                    reviews = api_client.get_reviews(show_hidden=True)
-                else:
-                    reviews = api_client.get_reviews(show_hidden=False)
+                reviews = api_client.get_reviews(show_hidden=True)
                 stats["reviews_count"] = len(reviews)
             except:
                 pass
@@ -219,13 +210,8 @@ def news_list():
         current_user = get_current_user()
         
         try:
-            # Получаем новости в зависимости от прав пользователя
-            if current_user and current_user.get("is_superuser"):
-                show_hidden = request.args.get("show_hidden", "false").lower() == "true"
-                news = api_client.get_news(show_hidden=show_hidden)
-            else:
-                # Для обычных пользователей только видимые новости
-                news = api_client.get_news(show_hidden=False)
+            # Получаем все новости, включая скрытые
+            news = api_client.get_news(show_hidden=True)
             
             # Форматируем даты
             for news_item in news:
@@ -259,7 +245,7 @@ def news_list():
 def news_create():
     try:
         current_user = get_current_user()
-        if not current_user or not current_user.get("is_superuser"):
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
             flash("У вас нет прав на создание новостей", category="error")
             return redirect(url_for("panel.news_list"))
         
@@ -299,11 +285,8 @@ def news_create():
         
         flash("Новость успешно создана", category="success")
         
-        # Если новость скрытая, перезагружаем страницу с включенным фильтром
-        if is_hidden:
-            return redirect(url_for("panel.news_list", show_hidden="true"))
-        else:
-            return redirect(url_for("panel.news_list"))
+        # Всегда возвращаемся к списку новостей без параметра show_hidden
+        return redirect(url_for("panel.news_list"))
         
     except Exception as e:
         logger.error(f"Error creating news: {str(e)}")
@@ -328,7 +311,7 @@ def news_detail(news_id):
 def news_edit(news_id):
     try:
         current_user = get_current_user()
-        if not current_user or not current_user.get("is_superuser"):
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
             flash("У вас нет прав на редактирование новостей", category="error")
             return redirect(url_for("panel.news_list"))
         
@@ -379,7 +362,7 @@ def news_edit(news_id):
 def news_delete(news_id):
     try:
         current_user = get_current_user()
-        if not current_user or not current_user.get("is_superuser"):
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
             flash("У вас нет прав на удаление новостей", category="error")
             return redirect(url_for("panel.news_list"))
         
@@ -413,7 +396,7 @@ def news_delete(news_id):
 def news_toggle_visibility(news_id):
     try:
         current_user = get_current_user()
-        if not current_user or not current_user.get("is_superuser"):
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
             flash("У вас нет прав на изменение видимости новостей", category="error")
             return redirect(url_for("panel.news_list"))
         
@@ -475,14 +458,8 @@ def reviews_list():
         current_user = get_current_user()
         
         try:
-            # Получаем отзывы в зависимости от прав пользователя
-            if current_user and current_user.get("is_superuser"):
-                # Для администраторов показываем все отзывы или по фильтру
-                show_hidden = request.args.get("show_hidden", "false").lower() == "true"
-                reviews = api_client.get_reviews(show_hidden=show_hidden)
-            else:
-                # Для обычных пользователей только одобренные отзывы
-                reviews = api_client.get_reviews(show_hidden=False)
+            # Получаем все отзывы, включая скрытые
+            reviews = api_client.get_reviews(show_hidden=True)
             
             logger.info(f"Loaded {len(reviews)} reviews")
             
@@ -534,10 +511,10 @@ def review_create():
         )
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на создание отзыва", category="error")
             return redirect(url_for("panel.reviews_list"))
-        # Получаем данные из формы (как ожидает backend)
+        # Получаем данные из формы
         name = request.form.get("name")
         email = request.form.get("email")
         review = request.form.get("review")
@@ -564,12 +541,7 @@ def review_create():
         except:
             pass
         flash("Отзыв успешно создан", category="success")
-        
-        # Если отзыв неодобренный, перезагружаем страницу с включенным фильтром
-        if not is_approved:
-            return redirect(url_for("panel.reviews_list", show_hidden="true"))
-        else:
-            return redirect(url_for("panel.reviews_list"))
+        return redirect(url_for("panel.reviews_list"))
     except Exception as e:
         logger.error(f"Error creating review: {str(e)}")
         logger.error(f"Exception type: {type(e)}")
@@ -593,8 +565,8 @@ def review_detail(review_id):
 def review_edit(review_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на редактирование отзыва", category="error")
             return redirect(url_for("panel.reviews_list"))
         # Получаем данные из формы
         name = request.form.get("name")
@@ -602,7 +574,6 @@ def review_edit(review_id):
         review = request.form.get("review")
         rating = request.form.get("rating", 5)
         is_approved = request.form.get("is_approved") == "on"
-        is_hidden = request.form.get("is_hidden") == "on"
         if not all([name, email, review]):
             flash("Заполните все обязательные поля", category="error")
             return redirect(url_for("panel.reviews_list"))
@@ -612,8 +583,7 @@ def review_edit(review_id):
             "email": email,
             "review": review,
             "rating": int(rating),
-            "is_approved": is_approved,
-            "is_hidden": is_hidden
+            "is_approved": is_approved
         }
         result = api_client.update_review(review_id, **data)
         # Создаем событие
@@ -634,8 +604,8 @@ def review_edit(review_id):
 def review_approve(review_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на одобрение отзыва", category="error")
             return redirect(url_for("panel.reviews_list"))
         # Получаем информацию об отзыве для события
         try:
@@ -651,7 +621,7 @@ def review_approve(review_id):
         except:
             pass
         flash("Отзыв одобрен", category="success")
-        return redirect(url_for("panel.reviews_list"))
+        return redirect(url_for("panel.reviews_list", _external=True))
     except Exception as e:
         logger.error(f"Error approving review {review_id}: {str(e)}")
         flash("Ошибка при одобрении отзыва", category="error")
@@ -663,8 +633,8 @@ def review_approve(review_id):
 def review_reject(review_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на отклонение отзыва", category="error")
             return redirect(url_for("panel.reviews_list"))
         # Получаем информацию об отзыве для события
         try:
@@ -687,13 +657,46 @@ def review_reject(review_id):
         return redirect(url_for("panel.reviews_list"))
 
 
+@panel.route("/reviews/<int:review_id>/toggle-visibility", methods=["POST"], endpoint="review_toggle_visibility")
+@login_required
+def review_toggle_visibility(review_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на изменение видимости отзыва", category="error")
+            return redirect(url_for("panel.reviews_list"))
+        
+        # Получаем текущий отзыв
+        review = api_client.get_review_by_id(review_id)
+        name = review.get("name", "неизвестный автор")
+        
+        # Переключаем состояние одобрения
+        new_approved_state = not review.get("is_approved", False)
+        result = api_client.update_review(review_id, is_approved=new_approved_state)
+        
+        # Создаем событие
+        action_text = "одобрил" if new_approved_state else "скрыл"
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"{action_text} отзыв от {name}")
+        except:
+            pass
+        
+        flash(f"Отзыв {'одобрен' if new_approved_state else 'скрыт'}", category="success")
+        return redirect(url_for("panel.reviews_list"))
+        
+    except Exception as e:
+        logger.error(f"Error toggling review visibility {review_id}: {str(e)}")
+        flash("Ошибка при изменении видимости отзыва", category="error")
+        return redirect(url_for("panel.reviews_list"))
+
+
 @panel.route("/reviews/<int:review_id>/delete", methods=["POST"], endpoint="review_delete")
 @login_required
 def review_delete(review_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на удаление отзыва", category="error")
             return redirect(url_for("panel.reviews_list"))
         
         # Получаем информацию об отзыве для события
@@ -718,42 +721,6 @@ def review_delete(review_id):
     except Exception as e:
         logger.error(f"Error deleting review {review_id}: {str(e)}")
         flash("Ошибка при удалении отзыва", category="error")
-        return redirect(url_for("panel.reviews_list"))
-
-
-@panel.route("/reviews/<int:review_id>/toggle-visibility", methods=["POST"], endpoint="review_toggle_visibility")
-@login_required
-def review_toggle_visibility(review_id):
-    try:
-        current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
-            return redirect(url_for("panel.reviews_list"))
-        
-        # Получаем текущий отзыв и переключаем статус одобрения
-        review = api_client.get_review_by_id(review_id)
-        new_approved = not review.get("is_approved", False)
-        api_client.update_review(review_id, is_approved=new_approved)
-        
-        # Создаем событие
-        try:
-            action_text = "одобрил" if new_approved else "скрыл"
-            safe_create_action(current_user.get("username", "Администратор"), f"{action_text} отзыв от {review.get('name', 'неизвестный автор')}")
-        except:
-            pass
-        
-        flash("Статус отзыва изменен", category="success")
-        
-        # Сохраняем состояние фильтра
-        show_hidden = request.form.get("show_hidden", "false")
-        if show_hidden == "true":
-            return redirect(url_for("panel.reviews_list", show_hidden="true"))
-        else:
-            return redirect(url_for("panel.reviews_list"))
-        
-    except Exception as e:
-        logger.error(f"Error toggling review visibility {review_id}: {str(e)}")
-        flash("Ошибка при изменении статуса отзыва", category="error")
         return redirect(url_for("panel.reviews_list"))
 
 
@@ -807,8 +774,8 @@ def schedule_list():
 def schedule_create():
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на выполнение этого действия", category="error")
             return redirect(url_for("panel.schedule_list"))
         
         # Получаем данные из JSON
@@ -852,8 +819,8 @@ def schedule_detail(schedule_id):
 def schedule_edit(schedule_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на редактирование события", category="error")
             return redirect(url_for("panel.schedule_list"))
         
         # Получаем данные из JSON
@@ -886,8 +853,8 @@ def schedule_edit(schedule_id):
 def schedule_delete(schedule_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на удаление события", category="error")
             return redirect(url_for("panel.schedule_list"))
         
         # Получаем информацию о событии для события
@@ -988,7 +955,7 @@ def user_invite():
         
         # Создаем событие
         try:
-            role_text = "рекуртера" if is_recruiter else "администратора"
+            role_text = "работодателя" if is_recruiter else "администратора"
             safe_create_action(current_user.get("username", "Администратор"), f"пригласил {role_text} {email}")
         except:
             pass
@@ -996,9 +963,18 @@ def user_invite():
         flash("Приглашение успешно отправлено", category="success")
         return redirect(url_for("panel.users_list"))
         
+    except ValidationError as e:
+        logger.error(f"Validation error inviting user: {str(e)}")
+        flash(f"Ошибка валидации: {str(e)}", category="error")
+        return redirect(url_for("panel.users_list"))
+    except APIError as e:
+        logger.error(f"API error inviting user: {str(e)}")
+        # Используем сообщение от API напрямую
+        flash(str(e), category="error")
+        return redirect(url_for("panel.users_list"))
     except Exception as e:
         logger.error(f"Error inviting user: {str(e)}")
-        flash("Ошибка при отправке приглашения", category="error")
+        flash(f"Ошибка при отправке приглашения: {str(e)}", category="error")
         return redirect(url_for("panel.users_list"))
 
 
@@ -1031,6 +1007,14 @@ def user_resend_invite():
         flash("Приглашение повторно отправлено", category="success")
         return redirect(url_for("panel.users_list"))
         
+    except ValidationError as e:
+        logger.error(f"Validation error resending invite: {str(e)}")
+        flash(f"Ошибка валидации: {str(e)}", category="error")
+        return redirect(url_for("panel.users_list"))
+    except APIError as e:
+        logger.error(f"API error resending invite: {str(e)}")
+        flash(f"Ошибка API: {str(e)}", category="error")
+        return redirect(url_for("panel.users_list"))
     except Exception as e:
         logger.error(f"Error resending invite: {str(e)}")
         flash("Ошибка при повторной отправке приглашения", category="error")
@@ -1081,8 +1065,8 @@ def user_delete(user_id):
 def user_edit(user_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на редактирование пользователя", category="error")
             return redirect(url_for("panel.users_list"))
         
         # Получаем данные из формы
@@ -1124,30 +1108,50 @@ def user_edit(user_id):
 def vacancies_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        show_hidden = request.args.get("show_hidden", "false").lower() == "true"
-        vacancies = api_client.get_vacancies(show_hidden=show_hidden)
+        current_user = get_current_user()
+        
+        try:
+            # Получаем вакансии в зависимости от роли пользователя
+            if current_user and current_user.get("is_superuser"):
+                # Супер-администратор видит все вакансии
+                vacancies = api_client.get_vacancies(show_hidden=True)
+            elif current_user and current_user.get("is_recruiter"):
+                # Работодатель видит только свои вакансии
+                vacancies = api_client.get_vacancies(show_hidden=True)
+            else:
+                # Обычные администраторы не видят вакансии
+                vacancies = []
 
-        # Получаем статистику для каждой вакансии
-        for vacancy in vacancies:
-            try:
-                stats = api_client.get_vacancy_statistics(vacancy["id"])
-                vacancy["statistics"] = stats
-            except:
-                vacancy["statistics"] = {
-                    "total_applications": 0,
-                    "new_applications": 0,
-                    "in_review_applications": 0,
-                    "invited_applications": 0,
-                    "rejected_applications": 0,
-                    "conversion_rate": 0,
-                    "is_full": False,
-                }
+            # Получаем статистику для каждой вакансии
+            for vacancy in vacancies:
+                try:
+                    stats = api_client.get_vacancy_statistics(vacancy["id"])
+                    vacancy["statistics"] = stats
+                except:
+                    vacancy["statistics"] = {
+                        "total_applications": 0,
+                        "new_applications": 0,
+                        "in_review_applications": 0,
+                        "invited_applications": 0,
+                        "rejected_applications": 0,
+                        "conversion_rate": 0,
+                        "is_full": False,
+                    }
 
-        return render_template(
-            "panel/vacancies/vacancies_list.html",
-            nav_elements=nav_elements,
-            vacancies=vacancies,
-            show_hidden=show_hidden,
+            return render_template(
+                "panel/vacancies/vacancies_list.html",
+                nav_elements=nav_elements,
+                vacancies=vacancies,
+                    current_user=current_user,
+                )
+        except Exception as e:
+            logger.error(f"Error loading vacancies: {str(e)}")
+            flash("Ошибка при загрузке вакансий", category="error")
+            return render_template(
+                "panel/vacancies/vacancies_list.html",
+                nav_elements=nav_elements,
+                vacancies=[],
+                current_user=current_user,
         )
 
 
@@ -1186,6 +1190,15 @@ def vacancy_create():
                     flash("Дата начала не может быть в прошлом", category="error")
                     return redirect(url_for("panel.vacancy_create"))
 
+            # Функция для безопасного преобразования строки в int
+            def safe_int(value):
+                if not value or value.strip() == "":
+                    return None
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return None
+
             data = {
                 "title": request.form.get("title"),
                 "description": request.form.get("description"),
@@ -1193,12 +1206,19 @@ def vacancy_create():
                 "speciality": request.form.get("speciality"),
                 "requirements": request.form.get("requirements"),
                 "work_format": request.form.get("work_format"),
-                "start": start_date,
-                "end": end_date,
+                "start": start_date if start_date else None,
+                "end": end_date if end_date else None,
                 "chart": request.form.get("chart"),
+                "company_name": request.form.get("company_name"),
                 "contact_person": request.form.get("contact_person"),
                 "required_amount": int(request.form.get("required_amount", 1)),
                 "is_hidden": request.form.get("is_hidden") == "on",
+                "is_internship": request.form.get("is_internship") == "true",
+                "salary_from": safe_int(request.form.get("salary_from")),
+                "salary_to": safe_int(request.form.get("salary_to")),
+                "city": request.form.get("city"),
+                "metro_station": request.form.get("metro_station"),
+                "address": request.form.get("address"),
             }
 
             logger.info(f"Creating vacancy with data: {data}")
@@ -1257,6 +1277,15 @@ def vacancy_edit(vacancy_id):
                         url_for("panel.vacancy_edit", vacancy_id=vacancy_id)
                     )
 
+            # Функция для безопасного преобразования строки в int
+            def safe_int(value):
+                if not value or value.strip() == "":
+                    return None
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return None
+
             data = {
                 "title": request.form.get("title"),
                 "description": request.form.get("description"),
@@ -1264,12 +1293,19 @@ def vacancy_edit(vacancy_id):
                 "speciality": request.form.get("speciality"),
                 "requirements": request.form.get("requirements"),
                 "work_format": request.form.get("work_format"),
-                "start": start_date,
-                "end": end_date,
+                "start": start_date if start_date else None,
+                "end": end_date if end_date else None,
                 "chart": request.form.get("chart"),
+                "company_name": request.form.get("company_name"),
                 "contact_person": request.form.get("contact_person"),
                 "required_amount": int(request.form.get("required_amount", 1)),
                 "is_hidden": request.form.get("is_hidden") == "on",
+                "is_internship": request.form.get("is_internship") == "true",
+                "salary_from": safe_int(request.form.get("salary_from")),
+                "salary_to": safe_int(request.form.get("salary_to")),
+                "city": request.form.get("city"),
+                "metro_station": request.form.get("metro_station"),
+                "address": request.form.get("address"),
             }
 
             api_client.update_vacancy(vacancy_id, **data)

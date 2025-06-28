@@ -2,16 +2,38 @@ let currentReviewId = null;
 
 // Создание отзыва
 function createReview() {
-    currentReviewId = null;
+    document.getElementById('reviewModal').style.display = 'block';
     document.getElementById('modalTitle').textContent = 'Создать отзыв';
     document.getElementById('reviewForm').reset();
-    document.getElementById('reviewModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
     
-    // Устанавливаем начальный рейтинг
+    // Инициализируем звездочки
     resetStars();
     
-    return false; // Предотвращаем любые нежелательные действия браузера
+    // Добавляем обработчики событий для звездочек
+    const stars = document.querySelectorAll('.star-input');
+    stars.forEach((star, index) => {
+        star.addEventListener('click', function() {
+            updateStars(index + 1);
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = index + 1;
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.textContent = '★';
+                    s.style.color = '#f39c12';
+                } else {
+                    s.textContent = '☆';
+                    s.style.color = '#bdc3c7';
+                }
+            });
+        });
+        
+        star.addEventListener('mouseleave', function() {
+            const currentRating = document.getElementById('rating').value;
+            updateStars(parseInt(currentRating));
+        });
+    });
 }
 
 // Функции для работы с модальными окнами отзывов
@@ -72,34 +94,8 @@ function updateStars(rating) {
 
 // Инициализация звездочек при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    const stars = document.querySelectorAll('.star-input');
-    
-    stars.forEach((star, index) => {
-        star.addEventListener('click', function() {
-            updateStars(index + 1);
-        });
-        
-        star.addEventListener('mouseenter', function() {
-            const rating = index + 1;
-            stars.forEach((s, i) => {
-                if (i < rating) {
-                    s.textContent = '★';
-                    s.style.color = '#f39c12';
-                } else {
-                    s.textContent = '☆';
-                    s.style.color = '#bdc3c7';
-                }
-            });
-        });
-        
-        star.addEventListener('mouseleave', function() {
-            const currentRating = document.getElementById('rating').value;
-            updateStars(currentRating);
-        });
-    });
-    
-    // Устанавливаем начальный рейтинг
-    resetStars();
+    // Инициализация звездочек теперь происходит при открытии модального окна
+    // в функции createReview()
 });
 
 // Закрытие модального окна при клике вне его
@@ -116,103 +112,6 @@ document.addEventListener('keydown', function(event) {
         closeReviewModal();
     }
 });
-
-// Переключение отображения скрытых отзывов
-function toggleHiddenReviews() {
-    const showHidden = document.getElementById('showHidden').checked;
-    const hiddenCards = document.querySelectorAll('.review-card.hidden');
-    
-    hiddenCards.forEach(card => {
-        if (showHidden) {
-            card.style.display = 'flex';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-    
-    // Обновляем URL без перезагрузки страницы
-    const url = new URL(window.location);
-    if (showHidden) {
-        url.searchParams.set('show_hidden', 'true');
-    } else {
-        url.searchParams.delete('show_hidden');
-    }
-    window.history.replaceState({}, '', url);
-    
-    // Обновляем все ссылки на странице
-    updateAllLinks(showHidden);
-    
-    // Обновляем состояние "нет отзывов" и счетчики
-    updateReviewsVisibility();
-}
-
-// Функция для обновления состояния видимости отзывов и счетчиков
-function updateReviewsVisibility() {
-    const reviewCards = document.querySelectorAll('.review-card');
-    const noReviewsElement = document.querySelector('.no-reviews');
-    const statsNumbers = document.querySelectorAll('.stat-number');
-    
-    let visibleCount = 0;
-    let totalCount = 0;
-    let approvedCount = 0;
-    let pendingCount = 0;
-    
-    reviewCards.forEach(card => {
-        totalCount++;
-        
-        // Проверяем, видим ли элемент (не скрыт через display: none)
-        const isVisible = card.style.display !== 'none' && 
-                         getComputedStyle(card).display !== 'none' &&
-                         card.offsetParent !== null;
-        
-        if (isVisible) {
-            visibleCount++;
-        }
-        
-        if (card.classList.contains('hidden')) {
-            pendingCount++;
-        } else {
-            approvedCount++;
-        }
-    });
-    
-    // Обновляем счетчики
-    if (statsNumbers.length >= 3) {
-        statsNumbers[0].textContent = totalCount; // Всего отзывов
-        statsNumbers[1].textContent = approvedCount; // Одобренных
-        statsNumbers[2].textContent = pendingCount; // На модерации
-    }
-    
-    // Показываем/скрываем сообщение "нет отзывов"
-    if (noReviewsElement) {
-        if (visibleCount === 0) {
-            noReviewsElement.style.display = 'flex';
-        } else {
-            noReviewsElement.style.display = 'none';
-        }
-    }
-}
-
-// Функция для обновления всех ссылок на странице
-function updateAllLinks(showHidden) {
-    const links = document.querySelectorAll('a[href]');
-    links.forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && !href.startsWith('http') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
-            try {
-                const url = new URL(href, window.location.origin);
-                if (showHidden) {
-                    url.searchParams.set('show_hidden', 'true');
-                } else {
-                    url.searchParams.delete('show_hidden');
-                }
-                link.href = url.pathname + url.search;
-            } catch (e) {
-                // Игнорируем ошибки парсинга URL
-            }
-        }
-    });
-}
 
 // Показать flash сообщение
 function showFlashMessage(message, type = 'info') {
@@ -368,5 +267,53 @@ document.addEventListener('DOMContentLoaded', function() {
             // После отправки формы скрываем неодобренные отзывы
             setTimeout(hidePendingReviews, 100);
         });
+    }
+});
+
+// Функции для работы с отзывами
+
+function openCreateModal() {
+    document.getElementById('createReviewModal').style.display = 'block';
+}
+
+function closeCreateModal() {
+    document.getElementById('createReviewModal').style.display = 'none';
+}
+
+function toggleReviewVisibility(reviewId) {
+    if (confirm('Вы уверены, что хотите изменить статус этого отзыва?')) {
+        fetch(`/reviews/${reviewId}/toggle-visibility`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Перезагружаем страницу для обновления счетчиков
+                window.location.reload();
+            } else {
+                alert('Ошибка при изменении статуса отзыва');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при изменении статуса отзыва');
+        });
+    }
+}
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('createReviewModal');
+    if (event.target === modal) {
+        closeCreateModal();
+    }
+}
+
+// Закрытие модального окна при нажатии Escape
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeCreateModal();
     }
 }); 

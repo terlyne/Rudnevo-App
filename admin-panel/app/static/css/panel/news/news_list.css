@@ -125,31 +125,15 @@
 }
 
 .filter-checkbox input[type="checkbox"] {
-    display: none;
-}
-
-.checkmark {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #636363;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.3s ease;
+    accent-color: #636363;
 }
 
 .filter-checkbox input[type="checkbox"]:checked + .checkmark {
-    background: #636363;
+    display: none;
 }
 
 .filter-checkbox input[type="checkbox"]:checked + .checkmark::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
+    display: none;
 }
 
 /* Список новостей */
@@ -439,7 +423,7 @@
 }
 
 .checkbox-label input[type="checkbox"] {
-    display: none;
+    accent-color: #636363;
 }
 
 .form-actions {
@@ -527,4 +511,14 @@
         width: 95%;
         margin: 10% auto;
     }
+}
+
+/* Скрытые новости */
+.news-card.hidden {
+    opacity: 0.6;
+    position: relative;
+}
+
+.news-card.hidden:hover {
+    opacity: 0.8;
 }

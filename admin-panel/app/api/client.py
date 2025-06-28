@@ -220,7 +220,7 @@ class APIClient:
 
     def invite_user(self, email: str, is_recruiter: bool = False) -> dict[str, any]:
         """Пригласить пользователя"""
-        url = f"{settings.API_URL}/api/v1/users/invite"
+        url = f"{settings.API_URL}/api/v1/auth/invite"
         data = {
             "email": email,
             "is_recruiter": is_recruiter,
@@ -244,7 +244,7 @@ class APIClient:
 
     def resend_invite(self, email: str) -> dict[str, any]:
         """Повторно отправить приглашение пользователю"""
-        url = f"{settings.API_URL}/api/v1/users/resend-invite"
+        url = f"{settings.API_URL}/api/v1/auth/resend-invite"
         data = {
             "email": email,
         }

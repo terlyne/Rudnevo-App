@@ -82,8 +82,11 @@
     border: 2px solid #ecf0f1;
     border-radius: 8px;
     font-size: 14px;
+    font-family: Montserrat;
+    color: #2c3e50;
     transition: border-color 0.2s, box-shadow 0.2s;
     box-sizing: border-box;
+    background-color: #ffffff;
 }
 
 .form-group input[type="text"]:focus,
@@ -99,11 +102,37 @@
 .form-group textarea {
     resize: vertical;
     min-height: 100px;
+    line-height: 1.5;
 }
 
 .form-group input[type="text"]::placeholder,
 .form-group textarea::placeholder {
     color: #bdc3c7;
+}
+
+/* Стили для радио-кнопок */
+.radio-group {
+    display: flex;
+    gap: 30px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #2c3e50;
+    padding: 10px 0;
+}
+
+.radio-label input[type="radio"] {
+    display: inline-block;
+    accent-color: #636363;
+}
+
+.radio-custom {
+    display: none;
 }
 
 .checkbox-group {
@@ -113,41 +142,19 @@
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 32px;
+    gap: 6px;
     cursor: pointer;
     font-weight: 500;
     color: #2c3e50;
 }
 
 .checkbox-label input[type="checkbox"] {
-    display: none;
+    display: inline-block;
+    accent-color: #636363;
 }
 
 .checkmark {
-    width: 20px;
-    height: 20px;
-    padding-right: 18px;
-    border: 2px solid #bdc3c7;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.2s;
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark {
-    background: #3498db;
-    border-color: #3498db;
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark::after {
-    content: '';
-    position: absolute;
-    left: 6px;
-    top: 2px;
-    width: 6px;
-    height: 10px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    display: none;
 }
 
 .form-actions {
@@ -204,31 +211,23 @@
     box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
 }
 
-/* Стили для сообщений об ошибках */
-.date-error {
-    color: #e74c3c;
-    font-size: 14px;
-    margin-top: 5px;
-    padding: 8px 12px;
-    background: #fdf2f2;
-    border: 1px solid #f5c6cb;
-    border-radius: 6px;
-    animation: fadeIn 0.3s ease-in;
-}
-
+/* Анимации для полей */
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-/* Стили для полей с ошибками */
+.vacancy-fields,
+.internship-fields {
+    animation: fadeIn 0.3s ease-out;
+}
+
 .form-group.has-error input,
 .form-group.has-error select,
 .form-group.has-error textarea {
@@ -244,15 +243,13 @@
 
 /* Адаптивность */
 @media (max-width: 1200px) {
-
     .form-header,
     .form-container {
-        margin: 0 100px;
+        padding: 0 100px;
     }
 
     .form-row {
         grid-template-columns: 1fr;
-        gap: 0;
     }
 }
 
@@ -260,7 +257,7 @@
     .form-header {
         flex-direction: column;
         gap: 15px;
-        align-items: stretch;
+        text-align: center;
     }
 
     .form-container {
@@ -280,52 +277,48 @@
         width: 100%;
         text-align: center;
     }
+
+    .radio-group {
+        flex-direction: column;
+        gap: 15px;
+    }
 }
 
-/* --- Стили для выпадающих списков --- */
+/* Стили для select */
 .form-group select {
-    font-family: inherit;
-    font-size: 14px;
-    color: #2c3e50;
-    background-color: #fff;
-    padding: 12px 36px 12px 16px;
-    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2398A6AD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
     appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
 }
 
 .form-group option {
-    font-family: inherit;
+    padding: 8px;
     font-size: 14px;
+    font-family: Montserrat;
     color: #2c3e50;
-    background: #fff;
+    background: #ffffff;
 }
 
+/* Специальные стили для чекбокса вакансии */
 .vacancy-checkbox-label {
-    gap: 48px !important;
+    margin-bottom: 0;
 }
 
-/* Универсальные стили для всех select/option в панели */
+/* Стили для панели */
 .panel-container select,
-.panel-container option,
-.vacancy-form select,
-.vacancy-form option {
-    font-family: inherit;
+.panel-container input,
+.panel-container textarea {
+    font-family: Montserrat;
     font-size: 14px;
-    color: #2c3e50;
-    background-color: #fff;
 }
 
-.panel-container select,
-.vacancy-form select {
-    padding: 12px 36px 12px 16px;
-    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2398A6AD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+.panel-container select:focus,
+.panel-container input:focus,
+.panel-container textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }

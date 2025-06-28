@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         star.addEventListener('mouseleave', function() {
             const currentRating = document.getElementById('rating').value;
-            updateStars(currentRating);
+            updateStars(parseInt(currentRating));
         });
     });
     

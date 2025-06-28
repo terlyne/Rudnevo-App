@@ -115,7 +115,7 @@ async def invite_user(
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пользователь с таким адресом электронной почты уже зарегистрирован.",
+            detail="Пользователь с таким email уже существует.",
         )
 
     # Создаем нового пользователя только с email
@@ -128,6 +128,39 @@ async def invite_user(
     user = await user_crud.create_user(db, new_user)
 
     # Создаем токен для регистрации
+    token_expires = timedelta(hours=24)
+    token = create_access_token(
+        data={"sub": str(user.id), "type": "registration"}, expires_delta=token_expires
+    )
+
+    # Отправляем email с приглашением
+    await send_registration_email(email_to=user.email, token=token)
+
+    return user
+
+
+@router.post("/resend-invite", response_model=UserInDB)
+async def resend_invite(
+    user_in: UserInvite,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: Any = Depends(get_current_superuser),
+) -> Any:
+    """Повторно отправить приглашение пользователю (только для супер-администратора)"""
+    # Проверяем, что пользователь существует
+    user = await user_crud.get_user_by_email(db, email=user_in.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь с таким адресом электронной почты не найден.",
+        )
+
+    if user.is_registered:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Пользователь уже зарегистрирован.",
+        )
+
+    # Создаем новый токен для регистрации
     token_expires = timedelta(hours=24)
     token = create_access_token(
         data={"sub": str(user.id), "type": "registration"}, expires_delta=token_expires

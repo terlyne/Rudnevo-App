@@ -12,85 +12,90 @@
 {% block container %}
 <div class="feedback-container">
     <div class="feedback-header">
-        <h1>Вопросы</h1>
-        <div class="feedback-stats">
-            <span class="stat-item">
-                <span class="stat-number">{{ feedbacks|length }}</span>
-                <span class="stat-label">всего вопросов</span>
-            </span>
-            <span class="stat-item">
-                <span class="stat-number">{{ feedbacks|selectattr('response_text', 'none')|list|length }}</span>
-                <span class="stat-label">без ответа</span>
-            </span>
+        <div class="header-content">
+            <h1>Вопросы</h1>
+            <p class="header-subtitle">Просматривайте и отвечайте на вопросы пользователей</p>
+        </div>
+    </div>
+
+    <div class="feedback-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">❓</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ feedbacks|length }}</div>
+                    <div class="stat-label">Всего вопросов</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ feedbacks|length }}</div>
+                    <div class="stat-label">Без ответа</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="feedback-list">
-        {% if feedbacks %}
-        {% for feedback in feedbacks %}
-        <div class="feedback-card {% if not feedback.response_text %}unanswered{% endif %}">
-            <div class="feedback-header-info">
-                <div class="feedback-meta">
-                    <div class="feedback-author">
-                        <span class="author-name">{{ feedback.name }}</span>
-                        <span class="author-email">{{ feedback.email }}</span>
-                    </div>
-                    <div class="feedback-date">{{ feedback.created_at }}</div>
-                </div>
-                <div class="feedback-status">
-                    {% if feedback.response_text %}
-                    <span class="status-answered">Отвечен</span>
-                    {% else %}
-                    <span class="status-unanswered">Ожидает ответа</span>
-                    {% endif %}
+        {% for feedback_item in feedbacks %}
+        <div class="feedback-card">
+            <div class="feedback-icon">
+                <div class="icon-placeholder">
+                    <span>❓</span>
                 </div>
             </div>
-
             <div class="feedback-content">
-                <div class="feedback-question">
-                    <h3>Вопрос:</h3>
-                    <p>{{ feedback.message }}</p>
+                <div class="feedback-header-info">
+                    <h3 class="feedback-title">
+                        <span>
+                        {% if feedback_item.name and feedback_item.name|length > 50 %}
+                            {{ feedback_item.name[:50] }}...
+                        {% else %}
+                            {{ feedback_item.name }}
+                        {% endif %}
+                        </span>
+                    </h3>
                 </div>
-
-                {% if feedback.response_text %}
-                <div class="feedback-response">
-                    <h3>Ответ:</h3>
-                    <p>{{ feedback.response_text }}</p>
-                    <div class="response-meta">
-                        <span class="response-date">{{ feedback.updated_at }}</span>
+                <div class="feedback-excerpt">
+                    <span>
+                    {% if feedback_item.message and feedback_item.message|length > 100 %}
+                        {{ feedback_item.message[:100] }}...
+                    {% else %}
+                        {{ feedback_item.message }}
+                    {% endif %}
+                    </span>
+                </div>
+                <div class="feedback-meta">
+                    <div class="feedback-info">
+                        <span class="feedback-email">{{ feedback_item.email }}</span>
+                        <span class="feedback-date">{{ feedback_item.created_at }}</span>
+                    </div>
+                    <div class="feedback-actions">
+                        <button type="button" class="btn-edit" onclick="return respondToFeedback({{ feedback_item.id }})">
+                            <span class="btn-icon">✏️</span>
+                            Ответить
+                        </button>
+                        <form method="POST" action="{{ url_for('panel.feedback_delete', feedback_id=feedback_item.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-delete"
+                                onclick="return confirm('Вы уверены, что хотите удалить это сообщение? Это действие нельзя отменить.')">
+                                <span class="btn-icon">🗑️</span>
+                                Удалить
+                            </button>
+                        </form>
                     </div>
                 </div>
-                {% endif %}
-            </div>
-
-            <div class="feedback-actions">
-                {% if not feedback.response_text %}
-                <form method="POST" action="{{ url_for('panel.feedback_respond', feedback_id=feedback.id) }}"
-                    style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button type="submit" class="btn-respond" onclick="return respondToFeedback({{ feedback.id }})">
-                        <span class="btn-icon">💬</span>
-                        Ответить
-                    </button>
-                </form>
-                {% endif %}
-                <form method="POST" action="{{ url_for('panel.feedback_delete', feedback_id=feedback.id) }}"
-                    style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button type="submit" class="btn-delete"
-                        onclick="return confirm('Вы уверены, что хотите удалить этот вопрос? Это действие нельзя отменить.')">
-                        <span class="btn-icon">🗑️</span>
-                        Удалить
-                    </button>
-                </form>
             </div>
         </div>
         {% endfor %}
-        {% else %}
+
+        {% if not feedbacks %}
         <div class="no-feedback">
             <div class="no-feedback-icon">❓</div>
             <div class="no-feedback-text">Вопросов пока нет</div>
-            <div class="no-feedback-subtext">Здесь будут отображаться вопросы от пользователей</div>
+            <div class="no-feedback-subtext">Вопросы появятся здесь, когда пользователи отправят обратную связь</div>
         </div>
         {% endif %}
     </div>

@@ -13,12 +13,7 @@
 <div class="applications-header">
     <div class="header-info">
         <h1>Заявки на вакансию</h1>
-        <h2>"{{ vacancy.title }}"</h2>
-        <div class="vacancy-meta">
-            <span class="meta-item">{{ vacancy.direction }} • {{ vacancy.speciality }}</span>
-            <span class="meta-item">{{ vacancy.work_format }}</span>
-            <span class="meta-item">{{ vacancy.start }} - {{ vacancy.end }}</span>
-        </div>
+        <h2>"{{ vacancy.title[:50] }}{% if vacancy.title|length > 50 %}...{% endif %}"</h2>
     </div>
     <a href="{{ url_for('panel.vacancies_list') }}" class="btn-back">← Назад к вакансиям</a>
 </div>
