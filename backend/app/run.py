@@ -27,10 +27,10 @@ async def lifespan(app: FastAPI):
     Контекстный менеджер жизненного цикла приложения.
     Выполняется при запуске и остановке.
     """
-    # Удаляем все таблицы и создаем их заново при запуске
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    # # Удаляем все таблицы и создаем их заново при запуске
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.drop_all)
+    #     await conn.run_sync(Base.metadata.create_all)
 
     # Запуск задачи очистки таблицы с событиями
     async def start_background_tasks():
