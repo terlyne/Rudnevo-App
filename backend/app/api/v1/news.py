@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Union
+from typing import Union
 import os
 
 from app.api.deps import get_current_admin_or_superuser
@@ -87,7 +87,7 @@ async def update_news_item(
     title: str = Form(None),
     content: str = Form(None),
     is_hidden: bool = Form(None),
-    image: Optional[UploadFile] = File(None),
+    image: UploadFile | None = File(None),
     remove_image: str = Form(None),
     current_user: User = Depends(get_current_admin_or_superuser)
 ):

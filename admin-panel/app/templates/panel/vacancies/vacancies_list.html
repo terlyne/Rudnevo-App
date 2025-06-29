@@ -12,15 +12,14 @@
 {% block container %}
 <div class="vacancies-container">
     {% if not current_user.is_superuser and not current_user.is_recruiter %}
-        <div class="access-denied">
-            <h2>Доступ запрещен</h2>
-            <p>У вас нет прав для просмотра вакансий.</p>
-        </div>
+    <div class="access-denied">
+        <h2>Доступ запрещен</h2>
+        <p>У вас нет прав для просмотра вакансий.</p>
+    </div>
     {% else %}
     <div class="vacancies-header">
         <div class="header-content">
             <h1>Вакансии</h1>
-            <p class="header-subtitle">Создайте первую вакансию, нажав кнопку "Создать вакансию"</p>
         </div>
         <a href="{{ url_for('panel.vacancy_create') }}" class="btn-create">
             <span class="btn-icon">+</span>
@@ -45,7 +44,7 @@
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">🙈</div>
+                <div class="stat-icon">🔒</div>
                 <div class="stat-content">
                     <div class="stat-number">{{ vacancies|selectattr('is_hidden', 'equalto', True)|list|length }}</div>
                     <div class="stat-label">Скрытых</div>
@@ -78,9 +77,11 @@
                         <span class="btn-icon">✏️</span>
                         Редактировать
                     </a>
-                    <form method="POST" action="{{ url_for('panel.vacancy_delete', vacancy_id=vacancy.id) }}" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                        <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить это объявление? Это действие нельзя отменить.')">
+                    <form method="POST" action="{{ url_for('panel.vacancy_delete', vacancy_id=vacancy.id) }}"
+                        style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <button type="submit" class="btn-delete"
+                            onclick="return confirm('Вы уверены, что хотите удалить это объявление? Это действие нельзя отменить.')">
                             <span class="btn-icon">🗑️</span>
                             Удалить
                         </button>
@@ -102,65 +103,65 @@
                         <span class="info-label">Формат работы:</span>
                         <span class="info-value">{{ vacancy.work_format }}</span>
                     </div>
-                    
+
                     {% if vacancy.is_internship %}
-                        {% if vacancy.start or vacancy.end %}
-                        <div class="info-row">
-                            <span class="info-label">Период:</span>
-                            <span class="info-value">
-                                {% if vacancy.start and vacancy.end %}
-                                    {{ vacancy.start }} - {{ vacancy.end }}
-                                {% elif vacancy.start %}
-                                    С {{ vacancy.start }}
-                                {% elif vacancy.end %}
-                                    До {{ vacancy.end }}
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endif %}
-                    {% else %}
-                        {% if vacancy.salary_from or vacancy.salary_to %}
-                        <div class="info-row">
-                            <span class="info-label">Зарплата:</span>
-                            <span class="info-value">
-                                {% if vacancy.salary_from and vacancy.salary_to %}
-                                    {{ vacancy.salary_from }} - {{ vacancy.salary_to }} ₽
-                                {% elif vacancy.salary_from %}
-                                    От {{ vacancy.salary_from }} ₽
-                                {% elif vacancy.salary_to %}
-                                    До {{ vacancy.salary_to }} ₽
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endif %}
+                    {% if vacancy.start or vacancy.end %}
+                    <div class="info-row">
+                        <span class="info-label">Период:</span>
+                        <span class="info-value">
+                            {% if vacancy.start and vacancy.end %}
+                            {{ vacancy.start }} - {{ vacancy.end }}
+                            {% elif vacancy.start %}
+                            С {{ vacancy.start }}
+                            {% elif vacancy.end %}
+                            До {{ vacancy.end }}
+                            {% endif %}
+                        </span>
+                    </div>
                     {% endif %}
-                    
+                    {% else %}
+                    {% if vacancy.salary_from or vacancy.salary_to %}
+                    <div class="info-row">
+                        <span class="info-label">Зарплата:</span>
+                        <span class="info-value">
+                            {% if vacancy.salary_from and vacancy.salary_to %}
+                            {{ vacancy.salary_from }} - {{ vacancy.salary_to }} ₽
+                            {% elif vacancy.salary_from %}
+                            От {{ vacancy.salary_from }} ₽
+                            {% elif vacancy.salary_to %}
+                            До {{ vacancy.salary_to }} ₽
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
                     {% if vacancy.city or vacancy.metro_station or vacancy.address %}
                     <div class="info-row">
                         <span class="info-label">Местоположение:</span>
                         <span class="info-value">
                             {% set location_parts = [] %}
                             {% if vacancy.city %}
-                                {% set _ = location_parts.append(vacancy.city) %}
+                            {% set _ = location_parts.append(vacancy.city) %}
                             {% endif %}
                             {% if vacancy.metro_station %}
-                                {% set _ = location_parts.append(vacancy.metro_station) %}
+                            {% set _ = location_parts.append(vacancy.metro_station) %}
                             {% endif %}
                             {% if vacancy.address %}
-                                {% set _ = location_parts.append(vacancy.address) %}
+                            {% set _ = location_parts.append(vacancy.address) %}
                             {% endif %}
                             {{ location_parts|join(', ') }}
                         </span>
                     </div>
                     {% endif %}
-                    
+
                     {% if vacancy.contact_person %}
                     <div class="info-row">
                         <span class="info-label">Контактное лицо:</span>
                         <span class="info-value">{{ vacancy.contact_person }}</span>
                     </div>
                     {% endif %}
-                    
+
                     {% if vacancy.company_name %}
                     <div class="info-row">
                         <span class="info-label">Компания:</span>
@@ -199,10 +200,13 @@
 
                     <div class="vacancy-progress">
                         <div class="progress-info">
-                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount }}</span>
+                            <span>Заполнено: {{ vacancy.statistics.total_applications }}/{{ vacancy.required_amount
+                                }}</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ (vacancy.statistics.total_applications / vacancy.required_amount * 100)|round(1) }}%"></div>
+                            <div class="progress-fill"
+                                style="width: {{ (vacancy.statistics.total_applications / vacancy.required_amount * 100)|round(1) }}%">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -214,7 +218,7 @@
             </div>
         </div>
         {% endfor %}
-        
+
         {% if not vacancies %}
         <div class="no-vacancies">
             <div class="no-vacancies-icon">💼</div>

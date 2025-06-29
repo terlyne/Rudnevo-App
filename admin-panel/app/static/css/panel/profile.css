@@ -152,28 +152,28 @@
     .profile-container {
         padding: 15px;
     }
-    
+
     .profile-card {
         flex-direction: column;
         text-align: center;
         gap: 20px;
     }
-    
+
     .profile-field {
         flex-direction: column;
         gap: 8px;
         text-align: center;
     }
-    
+
     .field-label {
         min-width: auto;
     }
-    
+
     .profile-actions {
         flex-direction: column;
         align-items: center;
     }
-    
+
     .btn-action {
         width: 100%;
         max-width: 300px;

@@ -5,6 +5,7 @@ class Token(BaseModel):
     """Схема токена доступа"""
 
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -13,3 +14,9 @@ class TokenData(BaseModel):
 
     username: str | None = None
     email: str | None = None
+
+
+class RefreshToken(BaseModel):
+    """Схема для обновления токена"""
+
+    refresh_token: str

@@ -14,7 +14,6 @@
     <div class="reviews-header">
         <div class="header-content">
             <h1>Отзывы</h1>
-            <p class="header-subtitle">Создайте первый отзыв, нажав кнопку "Создать отзыв"</p>
         </div>
         <button class="btn-create" onclick="createReview()">
             <span class="btn-icon">+</span>
@@ -65,12 +64,11 @@
                     <div class="review-title-section">
                         <div class="review-rating-display">
                             {% for i in range(5) %}
-                                {% if i < review.rating %}
-                                    <span class="star-display filled">★</span>
+                            {% if i < review.rating %} <span class="star-display filled">★</span>
                                 {% else %}
-                                    <span class="star-display empty">☆</span>
+                                <span class="star-display empty">☆</span>
                                 {% endif %}
-                            {% endfor %}
+                                {% endfor %}
                         </div>
                         <h3 class="review-title">
                             <span>{{ review.name or review.author_name }}</span>
@@ -78,9 +76,9 @@
                     </div>
                     <div class="review-status">
                         {% if review.is_approved %}
-                            <span class="status-approved">Одобрен</span>
+                        <span class="status-approved">Одобрен</span>
                         {% else %}
-                            <span class="status-pending">На модерации</span>
+                        <span class="status-pending">На модерации</span>
                         {% endif %}
                     </div>
                 </div>
@@ -94,25 +92,32 @@
                     </div>
                     <div class="review-actions">
                         {% if review.is_approved %}
-                            <form method="POST" action="{{ url_for('panel.review_toggle_visibility', review_id=review.id) }}" style="display: inline;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                                <button type="submit" class="btn-toggle" onclick="return confirm('Вы уверены, что хотите скрыть этот отзыв?')">
-                                    <span class="btn-icon">👁️</span>
-                                    Скрыть
-                                </button>
-                            </form>
+                        <form method="POST"
+                            action="{{ url_for('panel.review_toggle_visibility', review_id=review.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-toggle"
+                                onclick="return confirm('Вы уверены, что хотите скрыть этот отзыв?')">
+                                <span class="btn-icon">👁️</span>
+                                Скрыть
+                            </button>
+                        </form>
                         {% else %}
-                            <form method="POST" action="{{ url_for('panel.review_approve', review_id=review.id) }}" style="display: inline;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                                <button type="submit" class="btn-approve" onclick="return confirm('Вы уверены, что хотите одобрить этот отзыв?')">
-                                    <span class="btn-icon">✅</span>
-                                    Одобрить
-                                </button>
-                            </form>
+                        <form method="POST" action="{{ url_for('panel.review_approve', review_id=review.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-approve"
+                                onclick="return confirm('Вы уверены, что хотите одобрить этот отзыв?')">
+                                <span class="btn-icon">✅</span>
+                                Одобрить
+                            </button>
+                        </form>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('panel.review_delete', review_id=review.id) }}" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                            <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.')">
+                        <form method="POST" action="{{ url_for('panel.review_delete', review_id=review.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-delete"
+                                onclick="return confirm('Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.')">
                                 <span class="btn-icon">🗑️</span>
                                 Удалить
                             </button>
@@ -122,7 +127,7 @@
             </div>
         </div>
         {% endfor %}
-        
+
         {% if not reviews %}
         <div class="no-reviews">
             <div class="no-reviews-icon">⭐</div>
@@ -141,7 +146,7 @@
             <span class="close" onclick="closeReviewModal()">&times;</span>
         </div>
         <form id="reviewForm" method="POST" action="{{ url_for('panel.review_create') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <div class="form-group">
                 <label for="name">Имя автора *</label>
                 <input type="text" id="name" name="name" required>

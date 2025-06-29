@@ -48,24 +48,35 @@ class APIClient:
     def __init__(self, base_url: str, timeout: int = 10):
         self.base_url = base_url
         self.timeout = timeout
-        self._token: str | None = None
+        self._access_token: str | None = None
+        self._refresh_token: str | None = None
         logger.debug(f"APIClient initialized with base_url: {base_url}")
 
     @property
-    def token(self) -> str | None:
-        """Получить текущий токен из сессии"""
-        if self._token is None:
-            self._token = session.get("access_token")
+    def access_token(self) -> str | None:
+        """Получить текущий access токен из сессии"""
+        if self._access_token is None:
+            self._access_token = session.get("access_token")
             logger.debug(
-                f"Token retrieved from session: {'present' if self._token else 'missing'}"
+                f"Access token retrieved from session: {'present' if self._access_token else 'missing'}"
             )
-        return self._token
+        return self._access_token
+
+    @property
+    def refresh_token(self) -> str | None:
+        """Получить текущий refresh токен из сессии"""
+        if self._refresh_token is None:
+            self._refresh_token = session.get("refresh_token")
+            logger.debug(
+                f"Refresh token retrieved from session: {'present' if self._refresh_token else 'missing'}"
+            )
+        return self._refresh_token
 
     @property
     def headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
+        if self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
         return headers
 
     def _handle_error_response(self, response: requests.Response) -> None:
@@ -93,18 +104,88 @@ class APIClient:
         else:
             raise APIError(error_message, status_code=response.status_code)
 
-    def _save_token_to_session(self, token: str) -> None:
-        """Сохранить токен в сессию Flask"""
-        session["access_token"] = token
-        self._token = token
-        logger.debug("Token saved to session")
+    def _save_tokens_to_session(self, access_token: str, refresh_token: str) -> None:
+        """Сохранить токены в сессию Flask"""
+        session["access_token"] = access_token
+        session["refresh_token"] = refresh_token
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        logger.debug("Tokens saved to session")
 
-    def _clear_token(self) -> None:
-        """Очистить токен из сессии и из клиента"""
+    def _clear_tokens(self) -> None:
+        """Очистить токены из сессии и из клиента"""
         if "access_token" in session:
             session.pop("access_token")
-        self._token = None
-        logger.debug("Token cleared from session")
+        if "refresh_token" in session:
+            session.pop("refresh_token")
+        self._access_token = None
+        self._refresh_token = None
+        logger.debug("Tokens cleared from session")
+
+    def _refresh_access_token(self) -> bool:
+        """Обновить access токен с помощью refresh токена"""
+        if not self.refresh_token:
+            logger.warning("No refresh token available")
+            return False
+
+        try:
+            url = f"{settings.API_URL}/api/v1/auth/refresh"
+            data = {"refresh_token": self.refresh_token}
+
+            logger.debug("Attempting to refresh access token")
+            response = requests.post(
+                url,
+                json=data,
+                timeout=self.timeout,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to refresh token: {response.status_code}")
+                return False
+
+            data = response.json()
+            self._save_tokens_to_session(data["access_token"], data["refresh_token"])
+            logger.debug("Access token refreshed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error refreshing token: {str(e)}")
+            return False
+
+    def _make_authenticated_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Выполнить аутентифицированный запрос с автоматическим обновлением токена"""
+        # Подготавливаем заголовки
+        headers = kwargs.get('headers', {}).copy()
+        if not headers:
+            headers = self.headers.copy()
+        
+        # Удаляем Content-Type для multipart запросов
+        if 'files' in kwargs:
+            headers.pop('Content-Type', None)
+        
+        kwargs['headers'] = headers
+        
+        response = requests.request(method, url, **kwargs)
+        
+        # Если получили 401 и включено автоматическое обновление токенов
+        if response.status_code == 401 and settings.AUTO_REFRESH_TOKENS:
+            logger.debug("Received 401, attempting to refresh token")
+            if self._refresh_access_token():
+                # Обновляем заголовки с новым токеном
+                headers = kwargs.get('headers', {}).copy()
+                if not headers:
+                    headers = self.headers.copy()
+                if 'files' in kwargs:
+                    headers.pop('Content-Type', None)
+                kwargs['headers'] = headers
+                # Повторяем запрос с новым токеном
+                response = requests.request(method, url, **kwargs)
+            else:
+                # Не удалось обновить токен, очищаем сессию
+                self._clear_tokens()
+                raise AuthenticationError("Не удалось обновить токен доступа")
+        
+        return response
 
     def login(self, username: str, password: str) -> dict[str, any]:
         """Аутентификация пользователя"""
@@ -127,7 +208,7 @@ class APIClient:
                 self._handle_error_response(response)
 
             data = response.json()
-            self._save_token_to_session(data["access_token"])
+            self._save_tokens_to_session(data["access_token"], data["refresh_token"])
             logger.debug("Login successful")
             return data
 
@@ -164,7 +245,7 @@ class APIClient:
                 self._handle_error_response(response)
 
             data = response.json()
-            self._save_token_to_session(data["access_token"])
+            self._save_tokens_to_session(data["access_token"], data["refresh_token"])
             logger.debug("Registration successful")
             return data
 
@@ -178,18 +259,12 @@ class APIClient:
         data = {"email": email}
 
         try:
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
             return response.json()
-
         except RequestException as e:
             raise APIError(
                 f"Ошибка сети при попытке отправки письма для смены пароля: {str(e)}"
@@ -198,302 +273,173 @@ class APIClient:
     def reset_password(self, token: str, new_password: str) -> None:
         """Сброс пароля по токену"""
         url = f"{settings.API_URL}/api/v1/password/reset-password"
+        data = {"token": token, "new_password": new_password}
 
         try:
-            response = requests.post(
-                url,
-                json={
-                    "token": token,
-                    "new_password": new_password,
-                },
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-            return response.json()
-
         except RequestException as e:
-            logger.error(f"Network error during password reset: {str(e)}")
-            raise APIError("Ошибка сети при сбросе пароля")
+            raise APIError(f"Ошибка сети при сбросе пароля: {str(e)}")
 
     def invite_user(self, email: str, is_recruiter: bool = False) -> dict[str, any]:
-        """Пригласить пользователя"""
+        """Пригласить нового пользователя"""
         url = f"{settings.API_URL}/api/v1/auth/invite"
-        data = {
-            "email": email,
-            "is_recruiter": is_recruiter,
-        }
+        data = {"email": email, "is_recruiter": is_recruiter}
 
         try:
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
             return response.json()
-
         except RequestException as e:
-            raise APIError(f"Ошибка сети при приглашении пользователя: {str(e)}")
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке приглашения: {str(e)}")
 
     def resend_invite(self, email: str) -> dict[str, any]:
         """Повторно отправить приглашение пользователю"""
         url = f"{settings.API_URL}/api/v1/auth/resend-invite"
-        data = {
-            "email": email,
-        }
+        data = {"email": email}
 
         try:
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
             return response.json()
-
         except RequestException as e:
-            raise APIError(f"Ошибка сети при повторной отправке приглашения: {str(e)}")
+            logger.error(f"Network error during invitation: {str(e)}")
+            raise APIError(f"Ошибка сети при попытке повторной отправки приглашения: {str(e)}")
 
     def get_current_user(self) -> dict[str, any]:
         """Получить информацию о пользователе, зашедшего в админ-панель"""
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/users/me"
-
+        url = f"{settings.API_URL}/api/v1/auth/me"
         try:
-            logger.debug("Attempting to get information about current user")
-            response = requests.get(
-                url,
-                headers=self.headers,
-                timeout=self.timeout,
-            )
-
+            response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            logger.debug("Information received successfully")
             return response.json()
-
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(
-                f"Ошибка сети при попытке получения информации о текущем пользователе: {str(e)}"
-            )
+            raise APIError(f"Ошибка сети при получении информации о пользователе: {str(e)}")
 
     def logout(self) -> None:
         """Выход пользователя"""
-        self._clear_token()
+        self._clear_tokens()
 
     def create_action(self, username: str, action: str) -> dict[str, any]:
         """Создание нового события (выполняется каждый раз при любом действии пользователя: создание новости, редактирование расписания и т.д.)"""
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/actions"
-        data = {
-            "username": username,
-            "action": action,
-        }
+        url = f"{settings.API_URL}/api/v1/action/"
+        data = {"username": username, "action": action}
 
         try:
-            logger.debug("Attempt to create a new action")
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            logger.debug("Information has been sent successfully")
             return response.json()
-
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке создания нового события: {str(e)}")
+            raise APIError(f"Ошибка сети при создании события: {str(e)}")
 
     def get_actions(self, limit: int = 10) -> list[dict[str, any]]:
         """Получить список событий с преобразованным временем"""
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/actions/?limit={limit}"
+        url = f"{settings.API_URL}/api/v1/action/"
+        params = {"limit": limit}
 
         try:
-            logger.debug("Attempt to get actions")
-            response = requests.get(
-                url,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "GET", url, params=params, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            actions = response.json()
-
-            for action in actions:
-                if "created_at" in action:
-                    try:
-                        dt = datetime.fromisoformat(action["created_at"])
-                        action["created_at"] = dt.strftime("%d.%m.%Y %H:%M")
-                    except (ValueError, TypeError):
-                        logger.warning(f"Could not parse date: {action['created_at']}")
-                        continue
-
-            logger.debug("Information has been received successfully")
-            return actions
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке получения событий: {str(e)}")
+            raise APIError(f"Ошибка сети при получении списка событий: {str(e)}")
 
     def get(self, uri: str, params: dict = None):
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
         url = f"{settings.API_URL}/api/v1{uri}"
-
         try:
-            logger.debug("Attempt to get information")
-            response = requests.get(
-                url,
-                headers=self.headers,
-                params=params,
-                timeout=self.timeout,
-            )
-
+            response = self._make_authenticated_request("GET", url, params=params, timeout=self.timeout)
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            data = response.json()
-
-            logger.debug("Information has been received successfully")
-            return data
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке получения информации: {str(e)}")
+            raise APIError(f"Ошибка сети: {str(e)}")
 
     def get_by_id(self, uri: str, id: int):
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
         url = f"{settings.API_URL}/api/v1{uri}/{id}"
-
         try:
-            logger.debug("Attempt to get information")
-            response = requests.get(
-                url,
-                headers=self.headers,
-                timeout=self.timeout,
-            )
-
+            response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            data = response.json()
-
-            logger.debug("Information has been received successfully")
-            return data
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during invitation: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке получения информации: {str(e)}")
+            raise APIError(f"Ошибка сети: {str(e)}")
 
     def post(self, uri: str, **data):
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
         url = f"{settings.API_URL}/api/v1{uri}"
-
         try:
-            logger.debug(f"Attempting POST request to: {url}")
-            logger.debug(f"Request data: {data}")
-            logger.debug(f"Request headers: {self.headers}")
-
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
-            logger.debug(f"Response status: {response.status_code}")
-            logger.debug(f"Response headers: {response.headers}")
-            logger.debug(f"Response content: {response.text}")
-
-            if response.status_code != 200:
+            if response.status_code not in [200, 201]:
                 self._handle_error_response(response)
-
-            data = response.json()
-
-            logger.debug("Information has been sent successfully")
-            return data
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during POST request: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке создании: {str(e)}")
+            raise APIError(f"Ошибка сети: {str(e)}")
 
     def put(self, uri: str, **data):
         """PUT запрос к API"""
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
         url = f"{settings.API_URL}/api/v1{uri}"
-
         try:
-            logger.debug("Attempt to update information")
-            response = requests.put(
-                url, json=data, headers=self.headers, timeout=self.timeout
+            response = self._make_authenticated_request(
+                "PUT", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            data = response.json()
-            logger.debug("Information has been updated successfully")
-            return data
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during update: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке обновления: {str(e)}")
+            raise APIError(f"Ошибка сети: {str(e)}")
 
     def delete(self, uri: str):
         """DELETE запрос к API"""
-        if not self.token:
+        if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
         url = f"{settings.API_URL}/api/v1{uri}"
-
         try:
-            logger.debug("Attempt to delete information")
-            response = requests.delete(url, headers=self.headers, timeout=self.timeout)
-
+            response = self._make_authenticated_request("DELETE", url, timeout=self.timeout)
             if response.status_code != 200:
                 self._handle_error_response(response)
-
-            data = response.json()
-            logger.debug("Information has been deleted successfully")
-            return data
-
+            return response.json()
         except RequestException as e:
-            logger.error(f"Network error during deletion: {str(e)}")
-            raise APIError(f"Ошибка сети при попытке удаления: {str(e)}")
+            raise APIError(f"Ошибка сети: {str(e)}")
 
     # Методы для работы с вакансиями
     def get_vacancies(self, show_hidden: bool = False):
@@ -559,11 +505,8 @@ class APIClient:
         Скачать файл по uri (относительно base_url). Если dest_path указан — сохранить файл туда, иначе вернуть bytes.
         """
         url = f"{settings.API_URL}/api/v1{uri}"
-        headers = {}
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
         try:
-            response = requests.get(url, headers=headers, timeout=self.timeout, stream=True)
+            response = self._make_authenticated_request("GET", url, timeout=self.timeout, stream=True)
             if response.status_code != 200:
                 self._handle_error_response(response)
             if dest_path:
@@ -587,18 +530,12 @@ class APIClient:
         }
 
         try:
-            response = requests.post(
-                url,
-                json=data,
-                headers=self.headers,
-                timeout=self.timeout,
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
             )
-
             if response.status_code != 200:
                 self._handle_error_response(response)
-
             return response.json()
-
         except RequestException as e:
             raise APIError(f"Ошибка сети при смене пароля: {str(e)}")
 
@@ -651,19 +588,12 @@ class APIClient:
             # Если нет файлов, отправляем как обычные form-data
             if not files:
                 headers['Content-Type'] = 'application/x-www-form-urlencoded'
-                response = requests.post(
-                    url,
-                    data=form_data,
-                    headers=headers,
-                    timeout=self.timeout
+                response = self._make_authenticated_request(
+                    "POST", url, data=form_data, headers=headers, timeout=self.timeout
                 )
             else:
-                response = requests.post(
-                    url,
-                    files=files,
-                    data=form_data,
-                    headers=headers,
-                    timeout=self.timeout
+                response = self._make_authenticated_request(
+                    "POST", url, files=files, data=form_data, headers=headers, timeout=self.timeout
                 )
             
             if response.status_code != 200:
@@ -705,12 +635,8 @@ class APIClient:
             headers = self.headers.copy()
             headers.pop('Content-Type', None)
             
-            response = requests.put(
-                url,
-                files=files if files else None,
-                data=data,
-                headers=headers,
-                timeout=self.timeout
+            response = self._make_authenticated_request(
+                "PUT", url, files=files if files else None, data=data, headers=headers, timeout=self.timeout
             )
             
             if response.status_code != 200:
@@ -748,7 +674,9 @@ class APIClient:
         url = f"{settings.API_URL}/api/v1/feedback/{feedback_id}/respond"
         data = {"response_text": response_text}
         try:
-            response = requests.post(url, json=data, headers=self.headers, timeout=self.timeout)
+            response = self._make_authenticated_request(
+                "POST", url, json=data, timeout=self.timeout
+            )
             if response.status_code != 200:
                 self._handle_error_response(response)
             return response.json()

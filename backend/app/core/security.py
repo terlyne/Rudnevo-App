@@ -25,7 +25,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Создает JWT токен."""
+    """Создает JWT access токен."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now() + expires_delta
@@ -34,8 +34,40 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
+
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Создает JWT refresh токен."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now() + expires_delta
+    else:
+        expire = datetime.now() + timedelta(
+            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+        )
+
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+def verify_token(token: str, token_type: str = "access") -> dict:
+    """Проверяет JWT токен и возвращает payload."""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        if payload.get("type") != token_type:
+            raise ValueError(f"Неверный тип токена. Ожидается {token_type}")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Токен истек")
+    except jwt.JWTError:
+        raise ValueError("Неверный токен")

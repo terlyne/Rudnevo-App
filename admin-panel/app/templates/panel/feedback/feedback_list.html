@@ -14,7 +14,6 @@
     <div class="feedback-header">
         <div class="header-content">
             <h1>Вопросы</h1>
-            <p class="header-subtitle">Просматривайте и отвечайте на вопросы пользователей</p>
         </div>
     </div>
 
@@ -49,21 +48,21 @@
                 <div class="feedback-header-info">
                     <h3 class="feedback-title">
                         <span>
-                        {% if feedback_item.name and feedback_item.name|length > 50 %}
+                            {% if feedback_item.name and feedback_item.name|length > 50 %}
                             {{ feedback_item.name[:50] }}...
-                        {% else %}
+                            {% else %}
                             {{ feedback_item.name }}
-                        {% endif %}
+                            {% endif %}
                         </span>
                     </h3>
                 </div>
                 <div class="feedback-excerpt">
                     <span>
-                    {% if feedback_item.message and feedback_item.message|length > 100 %}
+                        {% if feedback_item.message and feedback_item.message|length > 100 %}
                         {{ feedback_item.message[:100] }}...
-                    {% else %}
+                        {% else %}
                         {{ feedback_item.message }}
-                    {% endif %}
+                        {% endif %}
                     </span>
                 </div>
                 <div class="feedback-meta">
@@ -72,11 +71,13 @@
                         <span class="feedback-date">{{ feedback_item.created_at }}</span>
                     </div>
                     <div class="feedback-actions">
-                        <button type="button" class="btn-edit" onclick="return respondToFeedback({{ feedback_item.id }})">
+                        <button type="button" class="btn-edit"
+                            onclick="return respondToFeedback({{ feedback_item.id }})">
                             <span class="btn-icon">✏️</span>
                             Ответить
                         </button>
-                        <form method="POST" action="{{ url_for('panel.feedback_delete', feedback_id=feedback_item.id) }}"
+                        <form method="POST"
+                            action="{{ url_for('panel.feedback_delete', feedback_id=feedback_item.id) }}"
                             style="display: inline;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                             <button type="submit" class="btn-delete"
