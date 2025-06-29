@@ -542,10 +542,13 @@ class APIClient:
     # Методы для работы с новостями
     def get_news(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список новостей"""
-        params = {}
         if show_hidden:
-            params["show_hidden"] = "true"
-        return self.get("/news", params=params)
+            # Для администраторов используем специальный эндпоинт
+            params = {"show_hidden": "true"}
+            return self.get("/news/admin", params=params)
+        else:
+            # Для публичного доступа используем обычный эндпоинт
+            return self.get("/news")
 
     def get_news_by_id(self, news_id: int) -> dict[str, any]:
         """Получить новость по ID"""
@@ -690,10 +693,13 @@ class APIClient:
     # Методы для работы с отзывами
     def get_reviews(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список отзывов"""
-        params = {}
         if show_hidden:
-            params["show_hidden"] = "true"
-        return self.get("/reviews", params=params)
+            # Для администраторов используем специальный эндпоинт
+            params = {"show_hidden": "true"}
+            return self.get("/reviews/admin", params=params)
+        else:
+            # Для публичного доступа используем обычный эндпоинт
+            return self.get("/reviews")
 
     def get_review_by_id(self, review_id: int) -> dict[str, any]:
         """Получить отзыв по ID"""
@@ -740,23 +746,23 @@ class APIClient:
     # Методы для работы с расписанием
     def get_schedules(self) -> list[dict[str, any]]:
         """Получить список расписаний"""
-        return self.get("/schedules")
+        return self.get("/schedule")
 
     def get_schedule_by_id(self, schedule_id: int) -> dict[str, any]:
         """Получить расписание по ID"""
-        return self.get_by_id("/schedules", schedule_id)
+        return self.get_by_id("/schedule", schedule_id)
 
     def create_schedule(self, **data) -> dict[str, any]:
         """Создать расписание"""
-        return self.post("/schedules", **data)
+        return self.post("/schedule", **data)
 
     def update_schedule(self, schedule_id: int, **data) -> dict[str, any]:
         """Обновить расписание"""
-        return self.put(f"/schedules/{schedule_id}", **data)
+        return self.put(f"/schedule/{schedule_id}", **data)
 
     def delete_schedule(self, schedule_id: int) -> dict[str, any]:
         """Удалить расписание"""
-        return self.delete(f"/schedules/{schedule_id}")
+        return self.delete(f"/schedule/{schedule_id}")
 
     def activate_vacancy(self, vacancy_id: int) -> dict[str, any]:
         """Активировать вакансию"""

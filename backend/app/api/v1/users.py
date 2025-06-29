@@ -6,7 +6,7 @@ from app.crud import user as user_crud
 from app.db.session import get_async_session
 from app.models.user import User
 from app.schemas.user import UserInDB, UserInvite
-from app.core.security import create_access_token
+from app.core.security import create_access_token, create_registration_token
 from app.utils.email import send_registration_email
 from datetime import timedelta
 
@@ -84,8 +84,8 @@ async def resend_invite(
 
     # Создаем новый токен для регистрации
     token_expires = timedelta(hours=24)
-    token = create_access_token(
-        data={"sub": str(user.id), "type": "registration"}, expires_delta=token_expires
+    token = create_registration_token(
+        data={"sub": str(user.id)}, expires_delta=token_expires
     )
 
     # Отправляем email с приглашением

@@ -21,11 +21,23 @@ async def read_news(
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
+):
+    """Получить список новостей (открытый эндпоинт)"""
+    # Показываем только видимые новости для публичного доступа
+    return await news_crud.get_news_list(
+        db, skip=skip, limit=limit, show_hidden=False
+    )
+
+
+@router.get("/admin", response_model=list[NewsInDB])
+async def read_news_admin(
+    skip: int = 0,
+    limit: int = 100,
+    show_hidden: bool = True,
+    db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Получить список новостей"""
-    # Для всех администраторов (супер-администраторов и обычных администраторов) 
-    # показываем все новости (включая скрытые) или по параметру
+    """Получить список новостей для администраторов (включая скрытые)"""
     return await news_crud.get_news_list(
         db, skip=skip, limit=limit, show_hidden=show_hidden
     )

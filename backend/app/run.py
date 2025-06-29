@@ -13,7 +13,7 @@ from app.db.session import engine, async_session_maker, get_async_session
 from app.models import Base
 from app.crud.user import get_user_by_email, create_user
 from app.schemas.user import UserCreate
-from app.core.security import create_access_token
+from app.core.security import create_registration_token
 from app.utils.email import send_registration_email
 from app.utils.task_scheduler import run_periodic_task, actions_weekly_cleanup
 
@@ -27,10 +27,10 @@ async def lifespan(app: FastAPI):
     Контекстный менеджер жизненного цикла приложения.
     Выполняется при запуске и остановке.
     """
-    # # Удаляем все таблицы и создаем их заново при запуске
-    # async with engine.begin() as conn:
-    #     await conn.run_sync(Base.metadata.drop_all)
-    #     await conn.run_sync(Base.metadata.create_all)
+    # Удаляем все таблицы и создаем их заново при запуске
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
     # Запуск задачи очистки таблицы с событиями
     async def start_background_tasks():
@@ -58,8 +58,8 @@ async def lifespan(app: FastAPI):
 
             # Создаем токен для регистрации
             token_expires = timedelta(hours=24)
-            token = create_access_token(
-                data={"sub": str(admin.id), "type": "registration"},
+            token = create_registration_token(
+                data={"sub": str(admin.id)},
                 expires_delta=token_expires,
             )
 

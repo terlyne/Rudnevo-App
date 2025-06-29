@@ -12,10 +12,23 @@ router = APIRouter()
 
 @router.get("/", response_model=list[ScheduleInDB])
 async def read_schedules(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_async_session), current_user: User = Depends(get_current_admin_or_superuser)
+    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_async_session)
 ):
-    """Получить список расписаний"""
+    """Получить список расписаний (открытый эндпоинт)"""
     return await schedule_crud.get_schedules(db, skip=skip, limit=limit)
+
+
+@router.get("/{schedule_id}", response_model=ScheduleInDB)
+async def read_schedule(
+    schedule_id: int, db: AsyncSession = Depends(get_async_session)
+):
+    """Получить расписание по ID (открытый эндпоинт)"""
+    schedule = await schedule_crud.get_schedule(db=db, schedule_id=schedule_id)
+    if not schedule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Расписание не найдено."
+        )
+    return schedule
 
 
 @router.post("/", response_model=ScheduleInDB)

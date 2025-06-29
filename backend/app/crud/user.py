@@ -3,11 +3,14 @@ from sqlalchemy import select
 from jose import jwt
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union
+import logging
 
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash, verify_password
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def get_user(db: AsyncSession, user_id: int) -> User | None:
@@ -139,20 +142,37 @@ async def verify_password_reset_token(db: AsyncSession, token: str) -> User:
 async def verify_registration_token(db: AsyncSession, token: str) -> User:
     """Проверить токен регистрации и вернуть пользователя"""
     try:
+        logger.debug(f"Attempting to verify registration token: {token[:20]}...")
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
+        logger.debug(f"Token payload: {payload}")
+        
         if payload.get("type") != "registration":
+            logger.error(f"Invalid token type. Expected 'registration', got '{payload.get('type')}'")
             raise ValueError("Неверный тип токена")
+        
         user_id = int(payload.get("sub"))
-    except (jwt.JWTError, ValueError):
+        logger.debug(f"Extracted user_id from token: {user_id}")
+        
+    except jwt.ExpiredSignatureError:
+        logger.error("Registration token has expired")
+        raise ValueError("Токен регистрации истек")
+    except jwt.JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
         raise ValueError("Недействительный токен")
+    except ValueError as e:
+        logger.error(f"Value error during token verification: {str(e)}")
+        raise e
 
     user = await get_user(db, user_id)
     if not user:
+        logger.error(f"User with id {user_id} not found")
         raise ValueError("Пользователь не найден")
 
     if user.is_registered:
+        logger.error(f"User {user_id} is already registered")
         raise ValueError("Пользователь уже зарегистрирован")
 
+    logger.debug(f"Registration token verified successfully for user {user_id}")
     return user

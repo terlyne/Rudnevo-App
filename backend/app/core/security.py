@@ -41,6 +41,21 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
+def create_registration_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Создает JWT токен для регистрации."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now() + expires_delta
+    else:
+        expire = datetime.now() + timedelta(hours=24)  # По умолчанию 24 часа для регистрации
+
+    to_encode.update({"exp": expire, "type": "registration"})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Создает JWT refresh токен."""
     to_encode = data.copy()

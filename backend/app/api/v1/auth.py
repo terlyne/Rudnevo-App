@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    create_registration_token,
     verify_password,
     verify_token,
 )
@@ -72,9 +73,18 @@ async def register_user(
             "refresh_token": refresh_token,
             "token_type": "bearer"
         }
-
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        # Обрабатываем ошибки валидации токена
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        # Обрабатываем другие ошибки
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Произошла ошибка при регистрации.",
+        )
 
 
 @router.post("/login", response_model=Token)
@@ -205,8 +215,8 @@ async def invite_user(
 
     # Создаем токен для регистрации
     token_expires = timedelta(hours=24)
-    token = create_access_token(
-        data={"sub": str(user.id), "type": "registration"}, expires_delta=token_expires
+    token = create_registration_token(
+        data={"sub": str(user.id)}, expires_delta=token_expires
     )
 
     # Отправляем email с приглашением
@@ -238,8 +248,8 @@ async def resend_invite(
 
     # Создаем новый токен для регистрации
     token_expires = timedelta(hours=24)
-    token = create_access_token(
-        data={"sub": str(user.id), "type": "registration"}, expires_delta=token_expires
+    token = create_registration_token(
+        data={"sub": str(user.id)}, expires_delta=token_expires
     )
 
     # Отправляем email с приглашением
