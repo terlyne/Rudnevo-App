@@ -154,23 +154,34 @@ class APIClient:
 
     def _make_authenticated_request(self, method: str, url: str, **kwargs) -> requests.Response:
         """Выполнить аутентифицированный запрос с автоматическим обновлением токена"""
+        logger.info(f"=== _make_authenticated_request ===")
+        logger.info(f"Method: {method}")
+        logger.info(f"URL: {url}")
+        logger.info(f"Kwargs keys: {list(kwargs.keys())}")
+        
         # Подготавливаем заголовки
         headers = kwargs.get('headers', {}).copy()
         if not headers:
             headers = self.headers.copy()
         
+        logger.info(f"Headers: {headers}")
+        
         # Удаляем Content-Type для multipart запросов
         if 'files' in kwargs:
             headers.pop('Content-Type', None)
+            logger.info("Removed Content-Type for multipart request")
         
         kwargs['headers'] = headers
         
+        logger.info("Making initial request...")
         response = requests.request(method, url, **kwargs)
+        logger.info(f"Initial response status: {response.status_code}")
         
         # Если получили 401 и включено автоматическое обновление токенов
         if response.status_code == 401 and settings.AUTO_REFRESH_TOKENS:
-            logger.debug("Received 401, attempting to refresh token")
+            logger.info("Received 401, attempting to refresh token")
             if self._refresh_access_token():
+                logger.info("Token refreshed successfully, retrying request")
                 # Обновляем заголовки с новым токеном
                 headers = kwargs.get('headers', {}).copy()
                 if not headers:
@@ -180,11 +191,14 @@ class APIClient:
                 kwargs['headers'] = headers
                 # Повторяем запрос с новым токеном
                 response = requests.request(method, url, **kwargs)
+                logger.info(f"Retry response status: {response.status_code}")
             else:
+                logger.error("Failed to refresh token")
                 # Не удалось обновить токен, очищаем сессию
                 self._clear_tokens()
                 raise AuthenticationError("Не удалось обновить токен доступа")
         
+        logger.info(f"Final response status: {response.status_code}")
         return response
 
     def login(self, username: str, password: str) -> dict[str, any]:
@@ -321,7 +335,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/auth/me"
+        url = f"{settings.API_URL}/api/v1/users/me"
         try:
             response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             if response.status_code != 200:
@@ -339,7 +353,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/action/"
+        url = f"{settings.API_URL}/api/v1/actions/"
         data = {"username": username, "action": action}
 
         try:
@@ -357,7 +371,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1/action/"
+        url = f"{settings.API_URL}/api/v1/actions/"
         params = {"limit": limit}
 
         try:
@@ -444,7 +458,10 @@ class APIClient:
     # Методы для работы с вакансиями
     def get_vacancies(self, show_hidden: bool = False):
         """Получить список вакансий"""
-        return self.get(f"/vacancies?show_hidden={show_hidden}")
+        params = {}
+        if show_hidden:
+            params["show_hidden"] = "true"
+        return self.get("/vacancies", params=params)
 
     def get_vacancy(self, vacancy_id: int):
         """Получить вакансию по ID"""
@@ -542,13 +559,10 @@ class APIClient:
     # Методы для работы с новостями
     def get_news(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список новостей"""
+        params = {}
         if show_hidden:
-            # Для администраторов используем специальный эндпоинт
-            params = {"show_hidden": "true"}
-            return self.get("/news/admin", params=params)
-        else:
-            # Для публичного доступа используем обычный эндпоинт
-            return self.get("/news")
+            params["show_hidden"] = "true"
+        return self.get("/news", params=params)
 
     def get_news_by_id(self, news_id: int) -> dict[str, any]:
         """Получить новость по ID"""
@@ -693,13 +707,10 @@ class APIClient:
     # Методы для работы с отзывами
     def get_reviews(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список отзывов"""
+        params = {}
         if show_hidden:
-            # Для администраторов используем специальный эндпоинт
-            params = {"show_hidden": "true"}
-            return self.get("/reviews/admin", params=params)
-        else:
-            # Для публичного доступа используем обычный эндпоинт
-            return self.get("/reviews")
+            params["show_hidden"] = "true"
+        return self.get("/reviews", params=params)
 
     def get_review_by_id(self, review_id: int) -> dict[str, any]:
         """Получить отзыв по ID"""
@@ -743,27 +754,6 @@ class APIClient:
         """Деактивировать пользователя"""
         return self.post(f"/users/{user_id}/deactivate")
 
-    # Методы для работы с расписанием
-    def get_schedules(self) -> list[dict[str, any]]:
-        """Получить список расписаний"""
-        return self.get("/schedule")
-
-    def get_schedule_by_id(self, schedule_id: int) -> dict[str, any]:
-        """Получить расписание по ID"""
-        return self.get_by_id("/schedule", schedule_id)
-
-    def create_schedule(self, **data) -> dict[str, any]:
-        """Создать расписание"""
-        return self.post("/schedule", **data)
-
-    def update_schedule(self, schedule_id: int, **data) -> dict[str, any]:
-        """Обновить расписание"""
-        return self.put(f"/schedule/{schedule_id}", **data)
-
-    def delete_schedule(self, schedule_id: int) -> dict[str, any]:
-        """Удалить расписание"""
-        return self.delete(f"/schedule/{schedule_id}")
-
     def activate_vacancy(self, vacancy_id: int) -> dict[str, any]:
         """Активировать вакансию"""
         return self.post(f"/vacancies/{vacancy_id}/activate")
@@ -772,25 +762,136 @@ class APIClient:
         """Деактивировать вакансию"""
         return self.post(f"/vacancies/{vacancy_id}/deactivate")
 
-    def approve_application(self, application_id: int) -> dict[str, any]:
-        """Одобрить заявку на вакансию"""
-        return self.post(f"/students/{application_id}/approve")
-
-    def reject_application(self, application_id: int) -> dict[str, any]:
-        """Отклонить заявку на вакансию"""
-        return self.post(f"/students/{application_id}/reject")
-
     def delete_application(self, application_id: int) -> dict[str, any]:
         """Удалить заявку на вакансию"""
         return self.delete(f"/students/{application_id}")
 
     def approve_review(self, review_id: int) -> dict[str, any]:
         """Одобрить отзыв"""
-        return self.post(f"/reviews/{review_id}/approve")
+        return self.post(f"/api/v1/reviews/{review_id}/approve")
 
     def reject_review(self, review_id: int) -> dict[str, any]:
         """Отклонить отзыв"""
-        return self.post(f"/reviews/{review_id}/reject")
+        return self.post(f"/api/v1/reviews/{review_id}/reject")
+
+    # Методы для работы с шаблонами расписаний
+    def upload_excel_schedule(self, file_path: str) -> dict[str, any]:
+        """Загрузить Excel файл и сгенерировать JSON шаблоны расписаний"""
+        url = f"{settings.API_URL}/api/v1/schedule/upload-excel"
+        
+        try:
+            with open(file_path, 'rb') as f:
+                files = {'file': (file_path.split('/')[-1], f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+                
+                response = self._make_authenticated_request(
+                    'POST', url, files=files, timeout=self.timeout
+                )
+                
+                if response.status_code != 200:
+                    self._handle_error_response(response)
+                
+                return response.json()
+                
+        except Exception as e:
+            logger.error(f"Error uploading Excel schedule: {str(e)}")
+            raise APIError(f"Ошибка загрузки файла: {str(e)}")
+
+    def upload_schedule_excel(self, files: dict) -> dict[str, any]:
+        """Загрузить Excel файл через multipart/form-data"""
+        url = f"{settings.API_URL}/api/v1/schedule/upload-excel"
+        
+        try:
+            response = self._make_authenticated_request(
+                'POST', url, files=files, timeout=self.timeout
+            )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error uploading Excel schedule: {str(e)}")
+            raise APIError(f"Ошибка загрузки файла: {str(e)}")
+
+    def get_schedule_templates(self) -> list[dict[str, any]]:
+        """Получить список активных шаблонов расписаний"""
+        url = f"{settings.API_URL}/api/v1/schedule/templates"
+        
+        try:
+            response = self._make_authenticated_request('GET', url, timeout=self.timeout)
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error getting schedule templates: {str(e)}")
+            raise APIError(f"Ошибка получения шаблонов: {str(e)}")
+
+    def get_schedule_template_by_college(self, college_name: str) -> dict[str, any]:
+        """Получить JSON данные расписания по названию колледжа"""
+        url = f"{settings.API_URL}/api/v1/schedule/templates/{college_name}"
+        
+        try:
+            response = self._make_authenticated_request('GET', url, timeout=self.timeout)
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error getting schedule template: {str(e)}")
+            raise APIError(f"Ошибка получения шаблона: {str(e)}")
+
+    def delete_schedule_template(self, template_id: int) -> dict:
+        """Удалить шаблон расписания по ID"""
+        logger.info(f"=== APIClient.delete_schedule_template ===")
+        logger.info(f"Template ID: {template_id}")
+        logger.info(f"Base URL: {self.base_url}")
+        logger.info(f"Access token available: {self.access_token is not None}")
+        
+        url = f"{self.base_url}/api/v1/schedule/templates/{template_id}"
+        logger.info(f"Full URL: {url}")
+        
+        try:
+            logger.info("Making authenticated DELETE request...")
+            response = self._make_authenticated_request("DELETE", url, timeout=self.timeout)
+            
+            logger.info(f"Response status: {response.status_code}")
+            logger.info(f"Response headers: {dict(response.headers)}")
+            logger.info(f"Response content: {response.text}")
+            
+            if response.status_code != 200:
+                logger.error(f"Non-200 response: {response.status_code}")
+                self._handle_error_response(response)
+            
+            result = response.json()
+            logger.info(f"Parsed response: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Exception in delete_schedule_template: {str(e)}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise APIError(f"Ошибка удаления шаблона: {str(e)}")
+
+    def delete_all_schedule_templates(self) -> dict[str, any]:
+        """Удалить все шаблоны расписаний"""
+        if not self.access_token:
+            raise AuthenticationError("Требуется аутентификация пользователя")
+
+        url = f"{settings.API_URL}/api/v1/schedule/templates"
+        try:
+            response = self._make_authenticated_request("DELETE", url, timeout=self.timeout)
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            return response.json()
+        except RequestException as e:
+            raise APIError(f"Ошибка сети при удалении всех шаблонов: {str(e)}")
 
 
 api_client = APIClient(settings.API_URL)

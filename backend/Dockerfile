@@ -12,8 +12,8 @@ RUN pip install --upgrade pip && \
 # Копируем код приложения
 COPY app ./app
 
-# Создаем директорию для медиафайлов
-RUN mkdir -p /app/media
+# Создаем директории для медиафайлов и шаблонов
+RUN mkdir -p /app/media /app/templates /app/temp_uploads
 
 RUN printenv
 

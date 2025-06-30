@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from app.api.deps import get_current_admin_or_superuser
 from app.crud import review as review_crud
@@ -16,37 +17,15 @@ async def read_reviews(
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
+    current_user: Optional[User] = Depends(get_current_admin_or_superuser),
 ):
-    """Получить список отзывов (открытый эндпоинт)"""
-    # Показываем только одобренные отзывы для публичного доступа
-    return await review_crud.get_reviews(
-        db, skip=skip, limit=limit, show_hidden=False
-    )
-
-
-@router.get("/admin", response_model=list[ReviewInDB])
-async def read_reviews_admin(
-    skip: int = 0,
-    limit: int = 100,
-    show_hidden: bool = True,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
-):
-    """Получить список отзывов для администраторов (включая неодобренные)"""
-    return await review_crud.get_reviews(
-        db, skip=skip, limit=limit, show_hidden=show_hidden
-    )
-
-
-@router.get("/pending", response_model=list[ReviewInDB])
-async def read_pending_reviews(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
-):
-    """Получить список неодобренных отзывов (только для администраторов)"""
-    return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=True)
+    """Получить список отзывов (открытый эндпоинт, скрытые — только для админов)"""
+    if show_hidden:
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=True)
+    # Публичные отзывы доступны всем
+    return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=False)
 
 
 @router.get("/{review_id}", response_model=ReviewInDB)

@@ -1,5 +1,5 @@
 from datetime import date
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -18,3 +18,13 @@ class Schedule(Base):
     room_number: Mapped[str_null_false] = mapped_column(String(50))
     start_date: Mapped[date]
     end_date: Mapped[date]
+
+
+class ScheduleTemplate(Base):
+    """Модель шаблона расписания в JSON формате"""
+
+    __tablename__ = "schedule_templates"
+
+    college_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    schedule_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True)

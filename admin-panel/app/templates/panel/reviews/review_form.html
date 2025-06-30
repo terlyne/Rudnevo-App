@@ -18,7 +18,7 @@
 <div class="review-form-container">
     <h2>Создать отзыв</h2>
     <form method="POST" action="{{ url_for('panel.review_create') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <div class="form-group">
             <label for="name">Имя автора *</label>
             <input type="text" id="name" name="name" required>
@@ -28,24 +28,12 @@
             <input type="email" id="email" name="email" required>
         </div>
         <div class="form-group">
-            <label for="rating">Рейтинг *</label>
-            <div class="rating-stars">
-                <input type="hidden" id="rating" name="rating" value="5">
-                <span class="star-input" data-rating="1">☆</span>
-                <span class="star-input" data-rating="2">☆</span>
-                <span class="star-input" data-rating="3">☆</span>
-                <span class="star-input" data-rating="4">☆</span>
-                <span class="star-input" data-rating="5">☆</span>
-            </div>
-        </div>
-        <div class="form-group">
             <label for="review">Текст отзыва *</label>
             <textarea id="review" name="review" rows="6" required></textarea>
         </div>
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" id="is_approved" name="is_approved">
-                <span class="checkmark"></span>
                 Одобрить отзыв
             </label>
         </div>
@@ -55,4 +43,4 @@
         </div>
     </form>
 </div>
-{% endblock %} 
+{% endblock %}

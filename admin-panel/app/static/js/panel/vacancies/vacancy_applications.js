@@ -45,26 +45,12 @@ function closeStatusModal() {
     document.getElementById('status-modal').style.display = 'none';
 }
 
-// Модальное окно деталей студента
-function showStudentDetails(studentId) {
-    // Здесь можно загрузить детали студента через AJAX
-    document.getElementById('student-modal').style.display = 'block';
-}
-
-function closeStudentModal() {
-    document.getElementById('student-modal').style.display = 'none';
-}
-
 // Закрытие модальных окон при клике вне их
 window.onclick = function (event) {
     const statusModal = document.getElementById('status-modal');
-    const studentModal = document.getElementById('student-modal');
 
     if (event.target === statusModal) {
         closeStatusModal();
-    }
-    if (event.target === studentModal) {
-        closeStudentModal();
     }
 }
 

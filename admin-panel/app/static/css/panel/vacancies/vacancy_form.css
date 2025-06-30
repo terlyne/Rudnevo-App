@@ -100,9 +100,7 @@
 }
 
 .form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-    line-height: 1.5;
+    min-height: 120px;
 }
 
 .form-group input[type="text"]::placeholder,

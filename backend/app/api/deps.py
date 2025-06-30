@@ -94,3 +94,21 @@ async def get_current_admin_or_superuser(current_user: User = Depends(get_curren
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Требуются права администратора или супер-администратора."
     )
+
+
+async def get_current_vacancy_user(current_user: User = Depends(get_current_active_user)):
+    """Получить текущего пользователя для работы с вакансиями (включает работодателей)"""
+    # Супер-администраторы всегда имеют доступ
+    if current_user.is_superuser:
+        return current_user
+    # Обычные администраторы имеют доступ
+    if not current_user.is_recruiter:
+        return current_user
+    # Работодатели имеют доступ к вакансиям
+    if current_user.is_recruiter:
+        return current_user
+    # Остальные пользователи не имеют доступа
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Требуются права администратора, супер-администратора или работодателя."
+    )

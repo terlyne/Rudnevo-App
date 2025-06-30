@@ -23,8 +23,22 @@ def login():
             password = request.form.get("password")
 
             api_client.login(username=username, password=password)
-            flash("Успешный вход", category="success")
-            return redirect(url_for("panel.home"))
+            
+            # Получаем информацию о пользователе для определения роли
+            try:
+                user_info = api_client.get_current_user()
+                if user_info.get("is_recruiter") and not user_info.get("is_superuser"):
+                    # Работодатель - перенаправляем на вакансии
+                    flash("Успешный вход", category="success")
+                    return redirect(url_for("panel.vacancies_list"))
+                else:
+                    # Администратор - перенаправляем на главную
+                    flash("Успешный вход", category="success")
+                    return redirect(url_for("panel.home"))
+            except Exception:
+                # Если не удалось получить информацию о пользователе, перенаправляем на главную
+                flash("Успешный вход", category="success")
+                return redirect(url_for("panel.home"))
 
         except AuthenticationError as e:
             flash("Неверное имя пользователя или пароль", category="error")

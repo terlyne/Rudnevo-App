@@ -13,6 +13,5 @@ class Review(Base):
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(100))
     review: Mapped[str] = mapped_column(Text)
-    rating: Mapped[int] = mapped_column(default=5)
     is_approved: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[created_at]

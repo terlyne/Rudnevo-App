@@ -5,7 +5,7 @@ from typing import Optional, Union
 from datetime import date
 import os
 
-from app.api.deps import get_current_admin_or_superuser
+from app.api.deps import get_current_vacancy_user
 from app.crud import student as student_crud, vacancy as vacancy_crud
 from app.db.session import get_async_session
 from app.models.user import User
@@ -108,7 +108,7 @@ async def read_students(
     vacancy_id: Optional[int] = None,
     status: Optional[ApplicationStatus] = None,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Получить список студентов (только для рекрутеров и супер-администраторов)"""
     # Супер-администратор может видеть все заявки
@@ -157,7 +157,7 @@ async def read_student(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Получить детали студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
@@ -192,7 +192,7 @@ async def resume_file(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Отправка файла резюме студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
@@ -232,10 +232,36 @@ async def resume_file(
             status_code=status.HTTP_404_NOT_FOUND, detail="Файл резюме не найден."
         )
 
+    # Используем сохраненное расширение файла или получаем из пути
+    file_extension = student.resume_file_extension or os.path.splitext(file_path)[1]
+    if not file_extension:
+        file_extension = ".pdf"  # fallback
+    
+    # Определяем правильный MIME тип на основе расширения
+    mime_types = {
+        ".pdf": "application/pdf",
+        ".doc": "application/msword",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xls": "application/vnd.ms-excel",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".ppt": "application/vnd.ms-powerpoint",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".txt": "text/plain",
+        ".rtf": "text/rtf",
+        ".html": "text/html",
+        ".htm": "text/html",
+        ".md": "text/markdown",
+        ".odt": "application/vnd.oasis.opendocument.text",
+        ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+        ".odp": "application/vnd.oasis.opendocument.presentation"
+    }
+    
+    media_type = mime_types.get(file_extension.lower(), "application/octet-stream")
+
     return FileResponse(
         file_path,
-        media_type="application/octet-stream",
-        filename=f"resume_{student.full_name.replace(' ', '_')}.pdf",
+        media_type=media_type,
+        filename=f"resume_{student.full_name.replace(' ', '_')}{file_extension}",
     )
 
 
@@ -245,7 +271,7 @@ async def update_student(
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
     student_in: StudentUpdate,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Обновить данные студента (только для рекрутеров и супер-администраторов)"""
     student = await student_crud.get_student(db, student_id)
@@ -286,7 +312,7 @@ async def bulk_update_student_status(
     *,
     db: AsyncSession = Depends(get_async_session),
     bulk_update: StudentBulkStatusUpdate,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Массовое обновление статусов студентов (только для рекрутеров и супер-администраторов)"""
     # Супер-администратор может обновлять любые заявки
@@ -322,7 +348,7 @@ async def delete_student(
     *,
     db: AsyncSession = Depends(get_async_session),
     student_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Удалить заявку студента (только для супер-администраторов)"""
     if not current_user.is_superuser:

@@ -15,6 +15,32 @@ def login_required(f):
     return decorated_function
 
 
+def recruiter_restricted(f):
+    """Декоратор для ограничения доступа работодателей к определенным страницам"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if current_user and current_user.get("is_recruiter") and not current_user.get("is_superuser"):
+            return redirect(url_for("panel.vacancies_list"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def admin_restricted(f):
+    """Декоратор для ограничения доступа обычных администраторов к вакансиям и пользователям"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if current_user and not current_user.get("is_superuser") and not current_user.get("is_recruiter"):
+            return redirect(url_for("panel.home"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def get_current_user():
     """Получить текущего пользователя"""
     try:
@@ -40,14 +66,16 @@ def get_navigation_elements() -> dict[str, dict]:
     }
 
     # Для суперпользователей добавляем дополнительные элементы
-    if current_user["is_superuser"]:
+    if current_user.get("is_superuser"):
         nav_items.update(
             {"panel.vacancies_list": "Вакансии", "panel.users_list": "Пользователи"}
         )
     # Для рекрутеров (но не суперпользователей) оставляем ТОЛЬКО вакансии
-    elif current_user["is_recruiter"]:
+    elif current_user.get("is_recruiter"):
         nav_items = {"panel.vacancies_list": "Вакансии"}
     # Для обычных администраторов оставляем базовые элементы (без вакансий и пользователей)
+    else:
+        pass
 
     return {
         endpoint: {"text": text, "is_active": endpoint == current_endpoint}

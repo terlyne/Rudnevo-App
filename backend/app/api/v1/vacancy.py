@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
-from app.api.deps import get_current_recruiter, get_current_superuser, get_current_admin_or_superuser
+from app.api.deps import get_current_recruiter, get_current_superuser, get_current_vacancy_user
 from app.crud import vacancy as vacancy_crud, student as student_crud
 from app.db.session import get_async_session
 from app.models.user import User
@@ -16,54 +17,22 @@ async def read_vacancies(
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: Optional[User] = Depends(get_current_vacancy_user),
 ):
-    """Получить список вакансий"""
-    if current_user.is_superuser:
-        # Супер-администратор видит все вакансии (включая скрытые)
-        return await vacancy_crud.get_vacancies(
-            db, skip=skip, limit=limit, include_hidden=show_hidden
-        )
-    elif current_user.is_recruiter:
-        # Рекрутер видит только свои вакансии
-        return await vacancy_crud.get_vacancies(
-            db,
-            skip=skip,
-            limit=limit,
-            recruiter_id=current_user.id,
-            include_hidden=show_hidden,
-        )
-    else:
-        # Обычный администратор не имеет доступа к вакансиям
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
-        )
-
-
-@router.get("/public", response_model=list[VacancyResponse])
-async def read_public_vacancies(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_async_session),
-):
-    """Получить список доступных вакансий (публичный эндпоинт)"""
-    return await vacancy_crud.get_vacancies(
-        db, skip=skip, limit=limit, include_hidden=False
-    )
-
-
-@router.get("/all", response_model=list[VacancyResponse])
-async def read_all_vacancies(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_superuser),
-):
-    """Получить все вакансии (только для супер-администраторов)"""
-    return await vacancy_crud.get_vacancies(
-        db, skip=skip, limit=limit, include_hidden=True
-    )
+    """Получить список вакансий (публичный эндпоинт, скрытые — только для админов/рекрутеров)"""
+    if show_hidden:
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        # Супер-админ видит все, рекрутер — только свои
+        if current_user.is_superuser:
+            return await vacancy_crud.get_vacancies(db, skip=skip, limit=limit, include_hidden=True)
+        elif current_user.is_recruiter:
+            return await vacancy_crud.get_vacancies(db, skip=skip, limit=limit, recruiter_id=current_user.id, include_hidden=True)
+        else:
+            # Обычные администраторы не имеют доступа к вакансиям
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на просмотр вакансий")
+    # Публичные вакансии
+    return await vacancy_crud.get_vacancies(db, skip=skip, limit=limit, include_hidden=False)
 
 
 @router.get("/{vacancy_id}", response_model=VacancyResponse)
@@ -71,56 +40,24 @@ async def read_vacancy(
     *,
     db: AsyncSession = Depends(get_async_session),
     vacancy_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: Optional[User] = Depends(get_current_vacancy_user),
 ):
-    """Получить вакансию по ID"""
+    """Получить вакансию по ID (публичный эндпоинт, скрытые — только для админов/рекрутеров)"""
     vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)
-
     if not vacancy:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Вакансия не найдена."
-        )
-
-    # Супер-администратор может видеть любую вакансию
-    if current_user.is_superuser:
-        return vacancy
-
-    # Рекрутер может видеть только свои вакансии
-    if current_user.is_recruiter:
-        if vacancy.recruiter_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="У вас нет прав на просмотр этой вакансии.",
-            )
-        return vacancy
-
-    # Обычный администратор не имеет доступа к вакансиям
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="У вас нет прав на просмотр вакансий.",
-    )
-
-
-@router.get("/public/{vacancy_id}", response_model=VacancyResponse)
-async def read_public_vacancy(
-    *,
-    db: AsyncSession = Depends(get_async_session),
-    vacancy_id: int,
-):
-    """Получить вакансию по ID (публичный эндпоинт)"""
-    vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)
-
-    if not vacancy:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Вакансия не найдена."
-        )
-
-    # Проверяем что вакансия не скрыта
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Вакансия не найдена.")
+    # Если вакансия скрыта — только для админов/рекрутеров
     if vacancy.is_hidden:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Вакансия не найдена."
-        )
-
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        if current_user.is_superuser:
+            return vacancy
+        elif current_user.is_recruiter and vacancy.recruiter_id == current_user.id:
+            return vacancy
+        else:
+            # Обычные администраторы не имеют доступа к вакансиям
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет прав на просмотр вакансий")
+    # Публичная вакансия
     return vacancy
 
 
@@ -129,7 +66,7 @@ async def get_vacancy_statistics(
     *,
     db: AsyncSession = Depends(get_async_session),
     vacancy_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Получить статистику вакансии"""
     vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)
@@ -199,13 +136,13 @@ async def create_vacancy(
     *,
     db: AsyncSession = Depends(get_async_session),
     vacancy_in: VacancyCreate,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Создание вакансии (только для рекрутеров и супер-администраторов)"""
     if not current_user.is_recruiter and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="У вас нет прав на выполнение данного функционала.",
+            detail="У вас нет прав на создание вакансий.",
         )
 
     # Валидация зарплаты
@@ -236,7 +173,7 @@ async def update_vacancy(
     db: AsyncSession = Depends(get_async_session),
     vacancy_id: int,
     vacancy_in: VacancyUpdate,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Обновить вакансию (только для рекрутеров и супер-администраторов)"""
     vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)
@@ -285,7 +222,7 @@ async def delete_vacancy(
     *,
     db: AsyncSession = Depends(get_async_session),
     vacancy_id: int,
-    current_user: User = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_vacancy_user),
 ):
     """Удалить вакансию (только для рекрутеров и супер-администраторов)"""
     vacancy = await vacancy_crud.get_vacancy(db, vacancy_id)

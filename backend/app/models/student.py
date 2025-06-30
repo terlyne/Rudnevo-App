@@ -28,6 +28,9 @@ class Student(Base):
     resume_file: Mapped[str | None] = mapped_column(
         String(500), nullable=True
     )  # Путь к файлу
+    resume_file_extension: Mapped[str | None] = mapped_column(
+        String(10), nullable=True
+    )  # Расширение файла (.pdf, .doc, .docx и т.д.)
     status: Mapped[ApplicationStatus] = mapped_column(
         Enum(ApplicationStatus), default=ApplicationStatus.NEW
     )

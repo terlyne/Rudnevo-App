@@ -8,7 +8,6 @@ class ReviewBase(BaseModel):
     name: str
     email: EmailStr
     review: str
-    rating: int = 5
     is_approved: bool = False
 
 
@@ -26,7 +25,6 @@ class ReviewUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     review: str | None = None
-    rating: int | None = None
     is_approved: bool | None = None
 
 

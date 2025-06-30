@@ -2,9 +2,10 @@ from flask import Blueprint, request, render_template, flash, redirect, url_for,
 import io
 from datetime import datetime
 import logging
+import requests
 
 from app.api.client import api_client, ValidationError, APIError, PermissionError
-from app.utils.panel import get_navigation_elements, login_required, get_current_user
+from app.utils.panel import get_navigation_elements, login_required, get_current_user, recruiter_restricted, admin_restricted
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +15,13 @@ panel = Blueprint("panel", __name__, template_folder="templates")
 @panel.route("/", methods=["GET", "POST"], endpoint="home")
 @login_required
 def home():
+    # Проверяем, является ли пользователь работодателем (но не суперадминистратором)
+    current_user = get_current_user()
+    if current_user and current_user.get("is_recruiter") and not current_user.get("is_superuser"):
+        return redirect(url_for("panel.vacancies_list"))
+    
     if request.method == "GET":
         nav_elements = get_navigation_elements()
-        current_user = get_current_user()
         
         try:
             # Получаем последние события
@@ -30,6 +35,15 @@ def home():
                     "пользователь", "пользователя", "пользователей", 
                     "профиль", "пароль", "выход", "logout", "войти", "login"
                 ]):
+                    # Форматируем время события
+                    if "created_at" in action:
+                        try:
+                            action["created_at"] = datetime.fromisoformat(
+                                action["created_at"].replace("Z", "+00:00")
+                            ).strftime("%d.%m.%Y %H:%M")
+                        except (ValueError, TypeError):
+                            action["created_at"] = "Неизвестно"
+                    
                     filtered_actions.append(action)
             filtered_actions = filtered_actions[:10]
             
@@ -66,7 +80,14 @@ def home():
                 except:
                     pass
         except PermissionError:
-            return redirect(url_for("panel.vacancies_list"))
+            # Если у пользователя нет прав на просмотр статистики, показываем пустую главную страницу
+            filtered_actions = []
+            stats = {
+                "news_count": 0,
+                "feedback_count": 0,
+                "reviews_count": 0,
+                "users_count": 0
+            }
         except Exception as e:
             logger.error(f"Error loading home page: {str(e)}")
             filtered_actions = []
@@ -88,6 +109,7 @@ def home():
 
 @panel.route("/feedback", methods=["GET", "POST"], endpoint="feedback_list")
 @login_required
+@recruiter_restricted
 def feedback_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
@@ -204,6 +226,7 @@ def feedback_delete(feedback_id):
 
 @panel.route("/news", methods=["GET", "POST"], endpoint="news_list")
 @login_required
+@recruiter_restricted
 def news_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
@@ -452,6 +475,7 @@ def news_image(news_id):
 
 @panel.route("/reviews", methods=["GET", "POST"], endpoint="reviews_list")
 @login_required
+@recruiter_restricted
 def reviews_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
@@ -518,10 +542,9 @@ def review_create():
         name = request.form.get("name")
         email = request.form.get("email")
         review = request.form.get("review")
-        rating = request.form.get("rating", 5)
         is_approved = request.form.get("is_approved") == "on"
         
-        logger.info(f"Creating review with data: name={name}, email={email}, rating={rating}, is_approved={is_approved}")
+        logger.info(f"Creating review with data: name={name}, email={email}, is_approved={is_approved}")
         
         if not all([name, email, review]):
             flash("Заполните все обязательные поля", category="error")
@@ -530,7 +553,6 @@ def review_create():
             "name": name,
             "email": email,
             "review": review,
-            "rating": int(rating),
             "is_approved": is_approved
         }
         logger.info(f"Sending data to API: {data}")
@@ -572,7 +594,6 @@ def review_edit(review_id):
         name = request.form.get("name")
         email = request.form.get("email")
         review = request.form.get("review")
-        rating = request.form.get("rating", 5)
         is_approved = request.form.get("is_approved") == "on"
         if not all([name, email, review]):
             flash("Заполните все обязательные поля", category="error")
@@ -582,7 +603,6 @@ def review_edit(review_id):
             "name": name,
             "email": email,
             "review": review,
-            "rating": int(rating),
             "is_approved": is_approved
         }
         result = api_client.update_review(review_id, **data)
@@ -628,33 +648,17 @@ def review_approve(review_id):
         return redirect(url_for("panel.reviews_list"))
 
 
-@panel.route("/reviews/<int:review_id>/reject", methods=["POST"], endpoint="review_reject")
+@panel.route("/reviews/<int:review_id>/reject", methods=["POST"])
 @login_required
-def review_reject(review_id):
+def reject_review(review_id):
+    """Отклонить отзыв"""
     try:
-        current_user = get_current_user()
-        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
-            flash("У вас нет прав на отклонение отзыва", category="error")
-            return redirect(url_for("panel.reviews_list"))
-        # Получаем информацию об отзыве для события
-        try:
-            review = api_client.get_review_by_id(review_id)
-            name = review.get("name", "неизвестный автор")
-        except:
-            name = "неизвестный автор"
-        # Отклоняем отзыв
-        result = api_client.update_review(review_id, is_approved=False)
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), f"отклонил отзыв от {name}")
-        except:
-            pass
-        flash("Отзыв отклонен", category="success")
-        return redirect(url_for("panel.reviews_list"))
+        api_client.reject_review(review_id)
+        flash("Отзыв отклонен", "success")
     except Exception as e:
-        logger.error(f"Error rejecting review {review_id}: {str(e)}")
-        flash("Ошибка при отклонении отзыва", category="error")
-        return redirect(url_for("panel.reviews_list"))
+        flash(f"Ошибка при отклонении отзыва: {str(e)}", "error")
+    
+    return redirect(url_for("panel.reviews_list"))
 
 
 @panel.route("/reviews/<int:review_id>/toggle-visibility", methods=["POST"], endpoint="review_toggle_visibility")
@@ -726,164 +730,65 @@ def review_delete(review_id):
 
 @panel.route("/schedule", methods=["GET", "POST"], endpoint="schedule_list")
 @login_required
+@recruiter_restricted
 def schedule_list():
-    if request.method == "GET":
-        nav_elements = get_navigation_elements()
-        current_user = get_current_user()
+    nav_elements = get_navigation_elements()
+    current_user = get_current_user()
+    try:
+        # Получаем список колледжей с HTML
+        templates = api_client.get_schedule_templates()
         
-        try:
-            schedules = api_client.get_schedules()
-            
-            # Форматируем даты
-            for schedule in schedules:
-                if "date" in schedule:
-                    try:
-                        # Преобразуем дату в формат для отображения
-                        date_obj = datetime.strptime(schedule["date"], "%Y-%m-%d")
-                        schedule["date"] = date_obj.strftime("%d.%m.%Y")
-                    except (ValueError, TypeError):
-                        schedule["date"] = "Неизвестно"
-                
-                if "time" in schedule and schedule["time"]:
-                    try:
-                        # Форматируем время
-                        time_obj = datetime.strptime(schedule["time"], "%H:%M")
-                        schedule["time"] = time_obj.strftime("%H:%M")
-                    except (ValueError, TypeError):
-                        schedule["time"] = "Неизвестно"
-            
+        if not templates:
             return render_template(
                 "panel/schedule/schedule_list.html",
                 nav_elements=nav_elements,
-                schedules=schedules,
-                current_user=current_user
+                current_user=current_user,
+                templates=[],
+                schedule_html="",
+                has_schedules=False
             )
-        except Exception as e:
-            logger.error(f"Error loading schedules: {str(e)}")
-            flash("Ошибка при загрузке расписания", category="error")
-            return render_template(
-                "panel/schedule/schedule_list.html",
-                nav_elements=nav_elements,
-                schedules=[],
-                current_user=current_user
-            )
-
-
-@panel.route("/schedule/create", methods=["POST"], endpoint="schedule_create")
-@login_required
-def schedule_create():
-    try:
-        current_user = get_current_user()
-        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
-            flash("У вас нет прав на выполнение этого действия", category="error")
-            return redirect(url_for("panel.schedule_list"))
         
-        # Получаем данные из JSON
-        data = request.get_json()
+        # Используем HTML из первого колледжа по умолчанию
+        schedule_html = ""
+        if templates and hasattr(templates[0], 'html_content') and templates[0].html_content:
+            schedule_html = templates[0].html_content
+        elif templates:
+            # Fallback: получаем HTML для первого колледжа
+            first_college = templates[0]["college_name"]
+            backend_url = f"{api_client.base_url}/api/v1/schedule/templates/{first_college}"
+            resp = requests.get(backend_url)
+            
+            if resp.status_code == 200:
+                schedule_html = resp.text
+            else:
+                schedule_html = f"<div class='error'>Ошибка загрузки расписания для {first_college}</div>"
         
-        if not data.get("title") or not data.get("date"):
-            flash("Заполните обязательные поля", category="error")
-            return redirect(url_for("panel.schedule_list"))
+        logger.info(f"Загружено {len(templates)} колледжей, HTML длина: {len(schedule_html)}")
         
-        # Создаем событие
-        result = api_client.create_schedule(**data)
-        
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), f"добавил событие \"{data['title']}\"")
-        except:
-            pass
-        
-        flash("Событие успешно создано", category="success")
-        return redirect(url_for("panel.schedule_list"))
+        return render_template(
+            "panel/schedule/schedule_list.html",
+            nav_elements=nav_elements,
+            current_user=current_user,
+            templates=templates,
+            schedule_html=schedule_html,
+            has_schedules=True
+        )
         
     except Exception as e:
-        logger.error(f"Error creating schedule: {str(e)}")
-        flash("Ошибка при создании события", category="error")
-        return redirect(url_for("panel.schedule_list"))
-
-
-@panel.route("/schedule/<int:schedule_id>", methods=["GET"], endpoint="schedule_detail")
-@login_required
-def schedule_detail(schedule_id):
-    try:
-        schedule = api_client.get_schedule_by_id(schedule_id)
-        return jsonify(schedule)
-    except Exception as e:
-        logger.error(f"Error getting schedule {schedule_id}: {str(e)}")
-        return jsonify({"error": "Событие не найдено"}), 404
-
-
-@panel.route("/schedule/<int:schedule_id>/edit", methods=["POST"], endpoint="schedule_edit")
-@login_required
-def schedule_edit(schedule_id):
-    try:
-        current_user = get_current_user()
-        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
-            flash("У вас нет прав на редактирование события", category="error")
-            return redirect(url_for("panel.schedule_list"))
-        
-        # Получаем данные из JSON
-        data = request.get_json()
-        
-        if not data.get("title") or not data.get("date"):
-            flash("Заполните обязательные поля", category="error")
-            return redirect(url_for("panel.schedule_list"))
-        
-        # Обновляем событие
-        result = api_client.update_schedule(schedule_id, **data)
-        
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал событие \"{data['title']}\"")
-        except:
-            pass
-        
-        flash("Событие успешно обновлено", category="success")
-        return redirect(url_for("panel.schedule_list"))
-        
-    except Exception as e:
-        logger.error(f"Error updating schedule {schedule_id}: {str(e)}")
-        flash("Ошибка при обновлении события", category="error")
-        return redirect(url_for("panel.schedule_list"))
-
-
-@panel.route("/schedule/<int:schedule_id>/delete", methods=["POST"], endpoint="schedule_delete")
-@login_required
-def schedule_delete(schedule_id):
-    try:
-        current_user = get_current_user()
-        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
-            flash("У вас нет прав на удаление события", category="error")
-            return redirect(url_for("panel.schedule_list"))
-        
-        # Получаем информацию о событии для события
-        try:
-            schedule = api_client.get_schedule_by_id(schedule_id)
-            schedule_title = schedule.get("title", "неизвестное событие")
-        except:
-            schedule_title = "неизвестное событие"
-        
-        # Удаляем событие
-        api_client.delete_schedule(schedule_id)
-        
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), f"удалил событие \"{schedule_title}\"")
-        except:
-            pass
-        
-        flash("Событие успешно удалено", category="success")
-        return redirect(url_for("panel.schedule_list"))
-        
-    except Exception as e:
-        logger.error(f"Error deleting schedule {schedule_id}: {str(e)}")
-        flash("Ошибка при удалении события", category="error")
-        return redirect(url_for("panel.schedule_list"))
+        logger.error(f"Ошибка при получении расписания: {str(e)}")
+        return render_template(
+            "panel/schedule/schedule_list.html",
+            nav_elements=nav_elements,
+            current_user=current_user,
+            templates=[],
+            schedule_html=f"<div class='error'>Ошибка загрузки расписания: {str(e)}</div>",
+            has_schedules=False
+        )
 
 
 @panel.route("/users", methods=["GET", "POST"], endpoint="users_list")
 @login_required
+@recruiter_restricted
 def users_list():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
@@ -934,6 +839,7 @@ def users_list():
 
 @panel.route("/users/invite", methods=["POST"], endpoint="user_invite")
 @login_required
+@admin_restricted
 def user_invite():
     try:
         current_user = get_current_user()
@@ -978,9 +884,10 @@ def user_invite():
         return redirect(url_for("panel.users_list"))
 
 
-@panel.route("/users/resend-invite", methods=["POST"], endpoint="user_resend_invite")
+@panel.route("/auth/resend-invite", methods=["POST"])
 @login_required
-def user_resend_invite():
+@admin_restricted
+def auth_resend_invite():
     try:
         current_user = get_current_user()
         if not current_user or not current_user.get("is_superuser"):
@@ -1023,6 +930,7 @@ def user_resend_invite():
 
 @panel.route("/users/<int:user_id>/delete", methods=["POST"], endpoint="user_delete")
 @login_required
+@admin_restricted
 def user_delete(user_id):
     try:
         current_user = get_current_user()
@@ -1062,6 +970,7 @@ def user_delete(user_id):
 
 @panel.route("/users/<int:user_id>/edit", methods=["POST"], endpoint="user_edit")
 @login_required
+@admin_restricted
 def user_edit(user_id):
     try:
         current_user = get_current_user()
@@ -1116,11 +1025,11 @@ def vacancies_list():
                 # Супер-администратор видит все вакансии
                 vacancies = api_client.get_vacancies(show_hidden=True)
             elif current_user and current_user.get("is_recruiter"):
-                # Работодатель видит только свои вакансии
+                # Работодатель видит только свои вакансии (включая скрытые)
                 vacancies = api_client.get_vacancies(show_hidden=True)
             else:
                 # Обычные администраторы не видят вакансии
-                vacancies = []
+                return redirect(url_for("panel.home"))
 
             # Получаем статистику для каждой вакансии
             for vacancy in vacancies:
@@ -1160,6 +1069,13 @@ def vacancies_list():
 def vacancy_create():
     if request.method == "GET":
         nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
+        # Проверяем права доступа
+        if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+            flash("У вас нет прав на создание вакансий", category="error")
+            return redirect(url_for("panel.home"))
+        
         return render_template(
             "panel/vacancies/vacancy_form.html",
             nav_elements=nav_elements,
@@ -1169,6 +1085,12 @@ def vacancy_create():
 
     if request.method == "POST":
         try:
+            current_user = get_current_user()
+            # Проверяем права доступа
+            if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+                flash("У вас нет прав на создание вакансий", category="error")
+                return redirect(url_for("panel.home"))
+            
             # Валидация дат
             start_date = request.form.get("start")
             end_date = request.form.get("end")
@@ -1242,6 +1164,13 @@ def vacancy_create():
 def vacancy_edit(vacancy_id):
     if request.method == "GET":
         nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
+        # Проверяем права доступа
+        if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+            flash("У вас нет прав на редактирование вакансий", category="error")
+            return redirect(url_for("panel.home"))
+        
         vacancy = api_client.get_vacancy(vacancy_id)
         return render_template(
             "panel/vacancies/vacancy_form.html",
@@ -1252,6 +1181,12 @@ def vacancy_edit(vacancy_id):
 
     if request.method == "POST":
         try:
+            current_user = get_current_user()
+            # Проверяем права доступа
+            if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+                flash("У вас нет прав на редактирование вакансий", category="error")
+                return redirect(url_for("panel.home"))
+            
             # Валидация дат
             start_date = request.form.get("start")
             end_date = request.form.get("end")
@@ -1323,6 +1258,12 @@ def vacancy_edit(vacancy_id):
 @login_required
 def vacancy_delete(vacancy_id):
     try:
+        current_user = get_current_user()
+        # Проверяем права доступа
+        if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+            flash("У вас нет прав на удаление вакансий", category="error")
+            return redirect(url_for("panel.home"))
+        
         api_client.delete_vacancy(vacancy_id)
         flash("Вакансия успешно удалена", category="success")
     except (ValidationError, APIError) as e:
@@ -1340,6 +1281,13 @@ def vacancy_delete(vacancy_id):
 def vacancy_applications(vacancy_id):
     if request.method == "GET":
         nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
+        # Проверяем права доступа
+        if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+            flash("У вас нет прав на просмотр заявок", category="error")
+            return redirect(url_for("panel.home"))
+        
         vacancy = api_client.get_vacancy(vacancy_id)
         students = api_client.get_students(vacancy_id=vacancy_id)
 
@@ -1359,6 +1307,12 @@ def vacancy_applications(vacancy_id):
 
     if request.method == "POST":
         try:
+            current_user = get_current_user()
+            # Проверяем права доступа
+            if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+                flash("У вас нет прав на управление заявками", category="error")
+                return redirect(url_for("panel.home"))
+            
             action = request.form.get("action")
             student_ids = request.form.getlist("student_ids")
 
@@ -1392,8 +1346,16 @@ def profile():
 @panel.route("/student_resume_file", methods=["GET"], endpoint="student_resume_file")
 @login_required
 def student_resume_file():
+    current_user = get_current_user()
+    # Проверяем права доступа
+    if not current_user or (not current_user.get("is_superuser") and not current_user.get("is_recruiter")):
+        flash("У вас нет прав на скачивание резюме", category="error")
+        return redirect(url_for("panel.home"))
+    
     student_id = request.args.get("student_id")
     student_full_name = "_".join(request.args.get("student_full_name").split())
+    file_extension = request.args.get("extension", ".pdf")  # Получаем расширение из параметра
+    
     if not student_id:
         flash("Не указан студент", "error")
         return redirect(url_for("panel.vacancies_list"))
@@ -1406,7 +1368,7 @@ def student_resume_file():
     if isinstance(file_data, bytes):
         file_data = io.BytesIO(file_data)
 
-    filename = f"resume_{student_full_name}.pdf"
+    filename = f"resume_{student_full_name}{file_extension}"
 
     return send_file(
         file_data,
@@ -1423,6 +1385,11 @@ def vacancy_activate(vacancy_id):
         if not current_user:
             flash("Ошибка аутентификации", category="error")
             return redirect(url_for("panel.vacancies_list"))
+        
+        # Проверяем права доступа
+        if not current_user.get("is_superuser") and not current_user.get("is_recruiter"):
+            flash("У вас нет прав на активацию вакансий", category="error")
+            return redirect(url_for("panel.home"))
         
         # Активируем вакансию
         api_client.activate_vacancy(vacancy_id)
@@ -1451,6 +1418,11 @@ def vacancy_deactivate(vacancy_id):
             flash("Ошибка аутентификации", category="error")
             return redirect(url_for("panel.vacancies_list"))
         
+        # Проверяем права доступа
+        if not current_user.get("is_superuser") and not current_user.get("is_recruiter"):
+            flash("У вас нет прав на деактивацию вакансий", category="error")
+            return redirect(url_for("panel.home"))
+        
         # Деактивируем вакансию
         api_client.deactivate_vacancy(vacancy_id)
         
@@ -1469,85 +1441,167 @@ def vacancy_deactivate(vacancy_id):
         return redirect(url_for("panel.vacancies_list"))
 
 
-@panel.route("/applications/<int:application_id>/approve", methods=["POST"], endpoint="application_approve")
-@login_required
-def application_approve(application_id):
-    try:
-        current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
-            return redirect(url_for("panel.vacancies_list"))
-        
-        # Одобряем заявку
-        api_client.approve_application(application_id)
-        
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), "одобрил заявку на вакансию")
-        except:
-            pass
-        
-        flash("Заявка успешно одобрена", category="success")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
-        
-    except Exception as e:
-        logger.error(f"Error approving application {application_id}: {str(e)}")
-        flash("Ошибка при одобрении заявки", category="error")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
-
-
-@panel.route("/applications/<int:application_id>/reject", methods=["POST"], endpoint="application_reject")
-@login_required
-def application_reject(application_id):
-    try:
-        current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
-            return redirect(url_for("panel.vacancies_list"))
-        
-        # Отклоняем заявку
-        api_client.reject_application(application_id)
-        
-        # Создаем событие
-        try:
-            safe_create_action(current_user.get("username", "Администратор"), "отклонил заявку на вакансию")
-        except:
-            pass
-        
-        flash("Заявка успешно отклонена", category="success")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
-        
-    except Exception as e:
-        logger.error(f"Error rejecting application {application_id}: {str(e)}")
-        flash("Ошибка при отклонении заявки", category="error")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
-
-
 @panel.route("/applications/<int:application_id>/delete", methods=["POST"], endpoint="application_delete")
 @login_required
 def application_delete(application_id):
     try:
         current_user = get_current_user()
-        if not current_user:
-            flash("Ошибка аутентификации", category="error")
-            return redirect(url_for("panel.vacancies_list"))
+        # Проверяем права доступа - только супер-администраторы могут удалять заявки
+        if not current_user or not current_user.get("is_superuser"):
+            flash("У вас нет прав на удаление заявок", category="error")
+            return redirect(url_for("panel.home"))
         
-        # Удаляем заявку
-        api_client.delete_application(application_id)
+        api_client.delete_student(application_id)
+        flash("Заявка успешно удалена", category="success")
+    except (ValidationError, APIError) as e:
+        flash(str(e), category="error")
+
+    return redirect(url_for("panel.vacancies_list"))
+
+
+@panel.route("/schedule/upload-excel", methods=["GET", "POST"])
+@login_required
+def upload_schedule_template():
+    if request.method == "GET":
+        nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        return render_template(
+            "panel/schedule/upload_schedule.html",
+            nav_elements=nav_elements,
+            current_user=current_user
+        )
+    
+    if request.method == "POST":
+        try:
+            current_user = get_current_user()
+            if not current_user:
+                flash("Ошибка аутентификации", category="error")
+                return redirect(url_for("panel.upload_schedule_template"))
+            
+            # Проверяем, что файл был загружен
+            if "file" not in request.files:
+                flash("Файл не выбран", category="error")
+                return redirect(url_for("panel.upload_schedule_template"))
+            
+            file = request.files["file"]
+            if file.filename == "":
+                flash("Файл не выбран", category="error")
+                return redirect(url_for("panel.upload_schedule_template"))
+            
+            # Проверяем расширение файла
+            if not file.filename.endswith(('.xlsx', '.xls')):
+                flash("Поддерживаются только файлы Excel (.xlsx, .xls)", category="error")
+                return redirect(url_for("panel.upload_schedule_template"))
+            
+            # Отправляем файл на backend
+            files = {"file": (file.filename, file.read(), file.content_type)}
+            result = api_client.upload_schedule_excel(files)
+            
+            # Создаем событие
+            try:
+                action_text = f'загрузил Excel файл с расписаниями: {file.filename}'
+                if len(action_text) > 50:
+                    action_text = action_text[:47] + '...'
+                safe_create_action(current_user.get("username", "Администратор"), action_text)
+            except:
+                pass
+            
+            flash("Расписание успешно загружено", category="success")
+            return redirect(url_for("panel.schedule_list"))
+            
+        except Exception as e:
+            logger.error(f"Error uploading schedule: {str(e)}")
+            flash(f"Ошибка при загрузке расписания: {str(e)}", category="error")
+            return redirect(url_for("panel.upload_schedule_template"))
+
+
+@panel.route("/schedule/template/<college_name>")
+@login_required
+def get_schedule_template_by_college(college_name):
+    try:
+        template_data = api_client.get_schedule_template_by_college(college_name)
+        return jsonify(template_data)
+    except Exception as e:
+        logger.error(f"Error getting schedule template for {college_name}: {str(e)}")
+        return jsonify({"error": "Шаблон не найден"}), 404
+
+
+@panel.route("/schedule/templates/<int:template_id>/delete", methods=["POST"])
+@login_required
+def delete_schedule_template(template_id):
+    try:
+        logger.info(f"=== DELETE SCHEDULE TEMPLATE REQUEST ===")
+        logger.info(f"Template ID: {template_id}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Request form data: {dict(request.form)}")
+        logger.info(f"Request args: {dict(request.args)}")
+        
+        # Проверяем CSRF токен
+        csrf_token = request.form.get('csrf_token')
+        logger.info(f"CSRF token received: {csrf_token is not None}")
+        if not csrf_token:
+            logger.error("CSRF token missing")
+            flash("Ошибка безопасности", "error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        logger.info(f"CSRF token validated, calling API to delete template {template_id}")
+        
+        # Удаляем шаблон через API
+        result = api_client.delete_schedule_template(template_id)
+        logger.info(f"API call successful, result: {result}")
+        
+        flash("Расписание успешно удалено", "success")
+    except Exception as e:
+        logger.error(f"Error deleting schedule template {template_id}: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        flash(f"Ошибка при удалении расписания: {str(e)}", "error")
+    
+    return redirect(url_for("panel.schedule_list"))
+
+
+@panel.route("/schedule/delete-all-templates", methods=["POST"])
+@login_required
+def delete_all_schedule_templates():
+    try:
+        current_user = get_current_user()
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            flash("У вас нет прав на удаление шаблонов расписаний", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Удаляем все шаблоны
+        result = api_client.delete_all_schedule_templates()
         
         # Создаем событие
         try:
-            safe_create_action(current_user.get("username", "Администратор"), "удалил заявку на вакансию")
+            safe_create_action(current_user.get("username", "Администратор"), "удалил все шаблоны расписаний")
         except:
             pass
         
-        flash("Заявка успешно удалена", category="success")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
+        flash("Все шаблоны расписаний удалены", category="success")
+        return redirect(url_for("panel.schedule_list"))
         
     except Exception as e:
-        logger.error(f"Error deleting application {application_id}: {str(e)}")
-        flash("Ошибка при удалении заявки", category="error")
-        return redirect(request.referrer or url_for("panel.vacancies_list"))
+        logger.error(f"Error deleting all schedule templates: {str(e)}")
+        flash("Ошибка при удалении шаблонов расписаний", category="error")
+        return redirect(url_for("panel.schedule_list"))
+
+
+@panel.route("/api/schedule/templates/<college_name>")
+@login_required
+def api_get_schedule_template(college_name):
+    try:
+        backend_url = f"{api_client.base_url}/api/v1/schedule/templates/{college_name}"
+        resp = requests.get(backend_url)
+        if resp.status_code == 200:
+            return resp.text
+        else:
+            return f"<div class='error'>Ошибка загрузки расписания для {college_name}</div>"
+    except Exception as e:
+        logger.error(f"Error getting schedule template for {college_name}: {str(e)}")
+        return f"<div class='error'>Ошибка получения шаблона: {str(e)}</div>"
 
 # --- универсальная обрезка action для всех событий ---
 def safe_create_action(username, action):

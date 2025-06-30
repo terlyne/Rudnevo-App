@@ -108,7 +108,7 @@
                                     {% if student.resume_file %}
                                     <div class="detail-row">
                                         <span class="detail-label">Файл резюме:</span>
-                                        <a href="{{ url_for('panel.student_resume_file') }}?student_id={{ student.id }}&student_full_name={{ student.full_name }}"
+                                        <a href="{{ url_for('panel.student_resume_file') }}?student_id={{ student.id }}&student_full_name={{ student.full_name }}&extension={{ student.resume_file_extension or '.pdf' }}"
                                             class="detail-link download-resume">
                                             Скачать резюме
                                         </a>
@@ -117,20 +117,6 @@
                                 </div>
 
                                 <div class="student-actions">
-                                    <form method="POST" action="{{ url_for('panel.application_approve', application_id=student.id) }}" style="display: inline;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                                        <button type="submit" class="btn-approve" onclick="return confirm('Вы уверены, что хотите одобрить эту заявку?')">
-                                            <span class="btn-icon">✅</span>
-                                            Одобрить
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('panel.application_reject', application_id=student.id) }}" style="display: inline;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-                                        <button type="submit" class="btn-reject" onclick="return confirm('Вы уверены, что хотите отклонить эту заявку?')">
-                                            <span class="btn-icon">❌</span>
-                                            Отклонить
-                                        </button>
-                                    </form>
                                     <form method="POST" action="{{ url_for('panel.application_delete', application_id=student.id) }}" style="display: inline;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
                                         <button type="submit" class="btn-delete" onclick="return confirm('Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.')">
@@ -141,10 +127,6 @@
                                     <button type="button" class="btn-change-status"
                                         onclick="showStatusModal({{ student.id }}, '{{ student.status }}')">
                                         Изменить статус
-                                    </button>
-                                    <button type="button" class="btn-view-details"
-                                        onclick="showStudentDetails({{ student.id }})">
-                                        Подробнее
                                     </button>
                                 </div>
                             </div>
@@ -194,19 +176,6 @@
                 <button type="button" class="btn-cancel" onclick="closeStatusModal()">Отмена</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- Модальное окно для деталей студента -->
-<div id="student-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Детали заявки</h3>
-            <span class="close" onclick="closeStudentModal()">&times;</span>
-        </div>
-        <div id="student-details-content">
-            <!-- Контент будет загружен динамически -->
-        </div>
     </div>
 </div>
 

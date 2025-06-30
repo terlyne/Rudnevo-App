@@ -35,7 +35,7 @@ function resendInvite(email) {
     if (confirm('Повторно отправить приглашение на ' + email + '?')) {
         console.log('Повторная отправка приглашения на:', email);
         
-        fetch('/users/resend-invite', {
+        fetch('/auth/resend-invite', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -406,11 +406,49 @@
 }
 
 .form-group input[type="file"] {
-    padding: 8px;
-    border: 2px dashed #e9ecef;
+    padding: 12px 24px;
+    border: 2px solid #636363;
     border-radius: 12px;
-    width: 100%;
+    width: 200px;
     box-sizing: border-box;
+    background: #636363;
+    color: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    font-family: inherit;
+    text-align: center;
+    position: relative;
+}
+
+.form-group input[type="file"]::before {
+    content: "Выбрать файл";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    white-space: nowrap;
+    color: white;
+}
+
+.form-group input[type="file"]::-webkit-file-upload-button {
+    display: none;
+}
+
+.form-group input[type="file"]::file-selector-button {
+    display: none;
+}
+
+.form-group input[type="file"]:hover {
+    background: #4a4a4a;
+    border-color: #4a4a4a;
+    transform: translateY(-2px);
 }
 
 .checkbox-label {

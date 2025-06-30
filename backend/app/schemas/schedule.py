@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any, Dict
 from pydantic import BaseModel, ConfigDict
 
 
@@ -20,7 +21,7 @@ class ScheduleCreate(ScheduleBase):
     pass
 
 
-class ScheduleUpdate(BaseModel):
+class ScheduleUpdate(ScheduleBase):
     """Схема обновления расписания"""
 
     title: str | None = None
@@ -38,3 +39,31 @@ class ScheduleInDB(ScheduleBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ScheduleTemplateBase(BaseModel):
+    college_name: str
+    schedule_data: Dict[str, Any]
+    is_active: bool = True
+
+
+class ScheduleTemplateCreate(ScheduleTemplateBase):
+    pass
+
+
+class ScheduleTemplateUpdate(ScheduleTemplateBase):
+    college_name: str | None = None
+    schedule_data: Dict[str, Any] | None = None
+    is_active: bool | None = None
+
+
+class ScheduleTemplateInDB(ScheduleTemplateBase):
+    id: int
+    html_content: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ScheduleUploadResponse(BaseModel):
+    status: str
+    data: list[dict[str, Any]]

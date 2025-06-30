@@ -460,7 +460,6 @@
 }
 
 .form-group textarea {
-    resize: vertical;
     min-height: 120px;
 }
 
@@ -499,19 +498,6 @@
 
 .checkbox-label input[type="checkbox"] {
     accent-color: #636363;
-}
-
-.checkbox-label .checkmark {
-    border: 2px solid #636363;
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark {
-    background-color: #636363;
-    border-color: #636363;
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark::after {
-    border-color: #fff;
 }
 
 .form-actions {

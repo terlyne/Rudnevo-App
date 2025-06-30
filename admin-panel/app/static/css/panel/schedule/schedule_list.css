@@ -7,186 +7,390 @@
 .schedule-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 30px;
+    background: #fff;
+    padding: 24px;
+    box-shadow: none;
 }
 
-.schedule-header h1 {
+.header-content {
+    flex: 1;
+}
+
+.header-content h1 {
     font-size: 28px;
     color: #2c3e50;
     font-weight: 600;
-    margin: 0;
+    margin: 0 0 8px 0;
 }
 
-.btn-create {
-    background: #636363;
-    color: white;
+.header-subtitle {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin: 0;
+    font-weight: 400;
+}
+
+.schedule-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* Состояния загрузки и ошибок */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #636363;
+    font-size: 16px;
+}
+
+.error {
+    text-align: center;
+    padding: 40px;
+    color: #e74c3c;
+    font-size: 16px;
+    background: #fdf2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    margin: 20px 0;
+}
+
+/* Стили для кнопок */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
     border: none;
     border-radius: 12px;
-    padding: 12px 24px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
     transition: all 0.3s ease;
+    text-decoration: none;
 }
 
-.btn-create:hover {
-    background: #4a4a4a;
+.btn:hover {
     transform: translateY(-2px);
+}
+
+.btn-primary {
+    background: #636363;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #4a4a4a;
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
 }
 
 .btn-icon {
     font-size: 16px;
 }
 
-/* Список расписаний */
-.schedule-list {
+/* Список колледжей */
+.colleges-list {
     display: flex;
-    flex-direction: column;
-    gap: 20px;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 16px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
 }
 
-.schedule-card {
-    background: #ffffff;
+.college-item {
+    background: #f8f9fa;
     border: 2px solid #636363;
-    border-radius: 24px;
-    padding: 24px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.schedule-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.schedule-header-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-}
-
-.schedule-title {
-    flex: 1;
-}
-
-.schedule-title h3 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin: 0 0 8px 0;
-}
-
-.schedule-date {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #7f8c8d;
-    font-weight: 500;
-}
-
-.date-icon {
-    font-size: 16px;
-}
-
-.time-separator {
-    color: #bdc3c7;
-}
-
-.time {
-    color: #636363;
-    font-weight: 600;
-}
-
-.schedule-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.btn-edit,
-.btn-delete {
-    border: none;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: 12px;
+    padding: 12px 20px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: fit-content;
     display: flex;
     align-items: center;
-    gap: 4px;
-    transition: all 0.2s ease;
+    gap: 8px;
 }
 
-.btn-edit {
-    background: #3498db;
-    color: white;
+.college-item:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-2px);
 }
 
-.btn-edit:hover {
-    background: #2980b9;
+.college-item.active {
+    background: #636363;
+    border-color: #636363;
+    color: #fff;
 }
 
-.btn-delete {
-    background: #e74c3c;
-    color: white;
-}
-
-.btn-delete:hover {
-    background: #c0392b;
-}
-
-.schedule-description {
-    margin-bottom: 16px;
-}
-
-.schedule-description p {
-    color: #34495e;
+.college-name {
+    font-weight: 600;
     font-size: 14px;
-    line-height: 1.6;
+}
+
+/* Убираем стрелки */
+.college-item::after {
+    display: none;
+}
+
+/* Область отображения расписания */
+.schedule-display-area {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 15px;
+    min-height: 400px;
+    overflow: auto;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* Стили для HTML расписания */
+.schedule-display-area .schedule-container {
+    padding: 0;
+    max-width: none;
     margin: 0;
 }
 
-.schedule-location {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #7f8c8d;
-    font-weight: 500;
-}
-
-.location-icon {
-    font-size: 16px;
-}
-
-/* Состояние без событий */
-.no-schedule {
+.schedule-display-area .schedule-header {
+    background: linear-gradient(135deg, #636363 0%, #4a4a4a 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 20px;
     text-align: center;
-    padding: 60px 20px;
-    color: #7f8c8d;
 }
 
-.no-schedule-icon {
-    font-size: 48px;
+.schedule-display-area .schedule-header h1 {
+    color: white;
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.schedule-display-area .schedule-header .subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.schedule-display-area .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Стили для HTML таблиц расписания */
+.schedule-display-area .schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-display-area .schedule-table th,
+.schedule-display-area .schedule-table td {
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+    min-height: 80px;
+    height: 80px;
+}
+
+.schedule-display-area .schedule-table th {
+    background: #636363;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.schedule-display-area .schedule-table tr:hover {
+    /* background-color: #f8f9fa; */
+}
+
+/* Стили для элементов расписания */
+.schedule-display-area .group-badge {
+    display: inline-block;
+    background: #b6e388;
+    color: #222;
+    font-weight: 600;
+    font-size: 18px;
+    border-radius: 16px;
+    padding: 2px 8px;
+    margin: 4px 0;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.schedule-display-area .discipline-text {
+    font-size: 16px;
+    color: #222;
+    font-weight: 500;
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.schedule-display-area .room-square {
+    display: inline-block;
+    background: #222;
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    border-radius: 12px;
+    padding: 6px 16px;
+    margin: 4px 0;
+    line-height: 1.2;
+}
+
+.schedule-display-area .auditory-text {
+    font-size: 16px;
+    color: #222;
+    font-weight: 500;
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.schedule-display-area .dates-text {
+    font-size: 16px;
+    color: #e74c3c;
+    font-weight: 500;
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+/* Стили для карточек расписания */
+.schedule-display-area .schedule-card {
+    background: #f8f9fa;
+    border: 2px solid #636363;
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.schedule-display-area .schedule-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-display-area .card-header {
+    border-bottom: 2px solid #636363;
+    padding-bottom: 12px;
     margin-bottom: 16px;
 }
 
-.no-schedule-text {
-    font-size: 18px;
+.schedule-display-area .group-name {
+    font-size: 16px;
     font-weight: 600;
-    margin-bottom: 8px;
     color: #2c3e50;
+    margin: 0;
 }
 
-.no-schedule-subtext {
+.schedule-display-area .card-content {
+    display: grid;
+    gap: 12px;
+}
+
+.schedule-display-area .info-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.schedule-display-area .info-row:last-child {
+    border-bottom: none;
+}
+
+.schedule-display-area .info-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 140px;
+    margin-right: 12px;
     font-size: 14px;
-    color: #95a5a6;
+}
+
+.schedule-display-area .info-value {
+    color: #6c757d;
+    flex: 1;
+    font-size: 14px;
+}
+
+.schedule-display-area .shift-badge {
+    background: #28a745;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.schedule-display-area .dates-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Блок "Расписание не найдено" */
+.no-schedules {
+    background: #fff;
+    padding: 60px 40px;
+    text-align: center;
+    margin-top: 20px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.no-schedules-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.no-schedules-text {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+.no-schedules-subtext {
+    font-size: 16px;
+    color: #7f8c8d;
+    line-height: 1.5;
 }
 
 /* Модальное окно */
@@ -208,9 +412,7 @@
     border: 2px solid #636363;
     border-radius: 24px;
     width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-width: 500px;
 }
 
 .modal-header {
@@ -240,83 +442,21 @@
     color: #2c3e50;
 }
 
-/* Форма */
-#scheduleForm {
+.modal-body {
     padding: 24px;
 }
 
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+.modal-body p {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    line-height: 1.5;
     color: #2c3e50;
-    font-size: 14px;
 }
 
-.form-group input[type="text"],
-.form-group input[type="date"],
-.form-group input[type="time"],
-.form-group textarea {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
-    box-sizing: border-box;
-}
-
-.form-group input[type="text"]:focus,
-.form-group input[type="date"]:focus,
-.form-group input[type="time"]:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #636363;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-}
-
-.form-actions {
+.modal-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
-}
-
-.btn-cancel,
-.btn-save {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-cancel {
-    background: #95a5a6;
-    color: white;
-}
-
-.btn-cancel:hover {
-    background: #7f8c8d;
-}
-
-.btn-save {
-    background: #636363;
-    color: white;
-}
-
-.btn-save:hover {
-    background: #4a4a4a;
 }
 
 /* Адаптивность */
@@ -329,19 +469,172 @@
         flex-direction: column;
         gap: 16px;
         align-items: stretch;
+        padding: 20px;
     }
 
-    .schedule-header-info {
-        flex-direction: column;
+    .header-content {
+        text-align: center;
+    }
+
+    .colleges-list {
+        gap: 8px;
+        padding-bottom: 12px;
+    }
+
+    .college-item {
+        padding: 10px 16px;
+        min-width: 120px;
+    }
+
+    .schedule-display-area {
+        padding: 16px;
+    }
+
+    .schedule-display-area .schedule-grid {
+        grid-template-columns: 1fr;
         gap: 16px;
     }
 
-    .schedule-actions {
-        justify-content: center;
+    .schedule-display-area .info-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 
-    .modal-content {
-        width: 95%;
-        margin: 10% auto;
+    .schedule-display-area .info-label {
+        min-width: auto;
+        margin-right: 0;
     }
+
+    .no-schedules {
+        padding: 32px 8px;
+    }
+
+    .schedule-table th,
+    .schedule-table td {
+        font-size: 15px;
+        padding: 10px 6px;
+    }
+
+    .group-badge {
+        font-size: 15px;
+        padding: 4px 10px;
+    }
+
+    .room-badge {
+        font-size: 16px;
+        padding: 4px 10px;
+    }
+}
+
+.schedule-list {
+    padding: 20px;
+}
+
+.schedule-html-block {
+    margin-bottom: 30px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    background: #fff;
+}
+
+.schedule-data {
+    margin-bottom: 20px;
+}
+
+.schedule-data h3 {
+    color: #333;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    font-family: 'Montserrat', 'Arial', sans-serif;
+    font-size: 20px;
+    color: #222;
+    margin: 0 auto;
+    box-shadow: none;
+}
+
+.schedule-table th,
+.schedule-table td {
+    border: 1px solid #bdbdbd;
+    padding: 18px 20px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.schedule-table th {
+    background: #fff;
+    font-weight: 600;
+    font-size: 22px;
+    color: #222;
+}
+
+.schedule-table tr:first-child th:first-child {
+    border-top-left-radius: 16px;
+}
+
+.schedule-table tr:last-child td:first-child {
+    border-bottom-left-radius: 16px;
+}
+
+.schedule-table tr:first-child th:last-child {
+    border-top-right-radius: 16px;
+}
+
+.schedule-table tr:last-child td:last-child {
+    border-bottom-right-radius: 16px;
+}
+
+/* Группа */
+.group-badge {
+    display: inline-block;
+    background: #b6e388;
+    color: #222;
+    font-weight: 600;
+    font-size: 20px;
+    border-radius: 12px;
+    padding: 6px 18px;
+    margin-bottom: 4px;
+}
+
+.group-sub {
+    font-size: 15px;
+    color: #222;
+    margin-top: 2px;
+}
+
+/* Кабинет */
+.room-badge {
+    display: inline-block;
+    background: #222;
+    color: #fff;
+    font-weight: 700;
+    font-size: 24px;
+    border-radius: 16px;
+    padding: 8px 22px;
+    margin-right: 12px;
+}
+
+.room-label {
+    font-size: 18px;
+    color: #222;
+    font-weight: 500;
+    margin-right: 12px;
+}
+
+.room-note {
+    color: #e74c3c;
+    font-size: 16px;
+    margin-top: 4px;
+    display: block;
 }

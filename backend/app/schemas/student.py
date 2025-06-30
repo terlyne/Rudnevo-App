@@ -13,6 +13,7 @@ class StudentBase(BaseModel):
     phone: str = Field(max_length=20)
     resume_link: str | None = Field(None, max_length=500)
     resume_file: str | None = Field(None, max_length=500)
+    resume_file_extension: str | None = Field(None, max_length=10)
 
 
 class StudentCreate(BaseModel):
@@ -37,6 +38,7 @@ class StudentUpdate(BaseModel):
     phone: str | None = Field(None, max_length=20)
     resume_link: str | None = Field(None, max_length=500)
     resume_file: str | None = Field(None, max_length=500)
+    resume_file_extension: str | None = Field(None, max_length=10)
     status: ApplicationStatus | None = None
 
 

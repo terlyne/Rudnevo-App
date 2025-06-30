@@ -1,8 +1,14 @@
-from sqlalchemy import select
+from typing import Any, Dict, Optional, Union, List
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models.schedule import Schedule
-from app.schemas.schedule import ScheduleCreate, ScheduleUpdate
+from app.models.schedule import Schedule, ScheduleTemplate
+from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleTemplateCreate, ScheduleTemplateUpdate
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def get_schedule(db: AsyncSession, schedule_id: int) -> Schedule | None:
@@ -65,3 +71,125 @@ async def delete_schedule(db: AsyncSession, schedule_id: int) -> bool:
     await db.delete(db_schedule)
     await db.commit()
     return True
+
+
+# Функции для работы с шаблонами расписаний
+async def get_schedule_template(db: AsyncSession, template_id: int) -> ScheduleTemplate | None:
+    """Получить шаблон по ID"""
+    result = await db.execute(select(ScheduleTemplate).where(ScheduleTemplate.id == template_id))
+    return result.scalar_one_or_none()
+
+
+async def get_schedule_template_by_college_name(
+    db: AsyncSession, college_name: str
+) -> Optional[ScheduleTemplate]:
+    """Получить шаблон по названию колледжа (первый активный при наличии дубликатов)"""
+    result = await db.execute(
+        select(ScheduleTemplate)
+        .where(ScheduleTemplate.college_name == college_name)
+        .where(ScheduleTemplate.is_active == True)
+        .order_by(ScheduleTemplate.id.desc())  # Берем самый новый
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_active_schedule_templates(
+    db: AsyncSession, skip: int = 0, limit: int = 100
+) -> List[ScheduleTemplate]:
+    """Получить все активные шаблоны"""
+    result = await db.execute(
+        select(ScheduleTemplate)
+        .where(ScheduleTemplate.is_active == True)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def create_schedule_template(db: AsyncSession, template_in: ScheduleTemplateCreate) -> ScheduleTemplate:
+    """Создать шаблон"""
+    db_template = ScheduleTemplate(**template_in.model_dump())
+    db.add(db_template)
+    await db.commit()
+    await db.refresh(db_template)
+    return db_template
+
+
+async def create_schedule_templates_multi(
+    db: AsyncSession, templates: List[ScheduleTemplateCreate]
+) -> List[ScheduleTemplate]:
+    """Создать несколько шаблонов"""
+    db_objs = []
+    for template in templates:
+        db_obj = ScheduleTemplate(**template.model_dump())
+        db.add(db_obj)
+        db_objs.append(db_obj)
+    
+    await db.commit()
+    for obj in db_objs:
+        await db.refresh(obj)
+    
+    return db_objs
+
+
+async def update_schedule_template(
+    db: AsyncSession, template_id: int, template_in: ScheduleTemplateUpdate
+) -> ScheduleTemplate | None:
+    """Обновить шаблон"""
+    db_template = await get_schedule_template(db, template_id)
+    if not db_template:
+        return None
+
+    update_data = template_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(db_template, field, value)
+
+    await db.commit()
+    await db.refresh(db_template)
+    return db_template
+
+
+async def delete_schedule_template(db: AsyncSession, template_id: int) -> bool:
+    """Удалить шаблон"""
+    logger.info(f"=== CRUD delete_schedule_template ===")
+    logger.info(f"Template ID: {template_id}")
+    
+    try:
+        db_template = await get_schedule_template(db, template_id)
+        logger.info(f"Found template: {db_template is not None}")
+        
+        if not db_template:
+            logger.warning(f"Template {template_id} not found in database")
+            return False
+
+        logger.info(f"Deleting template {template_id} from database")
+        await db.delete(db_template)
+        await db.commit()
+        logger.info(f"Template {template_id} deleted successfully")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error in CRUD delete_schedule_template: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
+
+
+async def deactivate_schedule_templates_by_college(
+    db: AsyncSession, college_name: str
+) -> None:
+    """Деактивировать все шаблоны для колледжа"""
+    await db.execute(
+        update(ScheduleTemplate)
+        .where(ScheduleTemplate.college_name == college_name)
+        .values(is_active=False)
+    )
+    await db.commit()
+
+
+async def delete_all_schedule_templates(db: AsyncSession) -> None:
+    """Удалить все шаблоны расписаний"""
+    await db.execute(delete(ScheduleTemplate))
+    await db.commit()

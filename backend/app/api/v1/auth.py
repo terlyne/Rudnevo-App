@@ -260,22 +260,5 @@ async def resend_invite(
 
 @router.post("/logout")
 async def logout():
-    """
-Выход из системы. Клиент должен удалить токен авторизации.
-"""
-    return {"message": "Вы успешно вышли из системы. Пожалуйста, удалите токен авторизации на клиенте."}
-
-
-@router.get("/me")
-async def get_current_user_info(
-    current_user: Any = Depends(get_current_active_user),
-) -> Any:
-    """Получить информацию о текущем пользователе"""
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email,
-        "is_superuser": current_user.is_superuser,
-        "is_recruiter": current_user.is_recruiter,
-        "is_registered": current_user.is_registered,
-    }
+    """Выход пользователя (заглушка, так как JWT токены не хранятся на сервере)"""
+    return {"message": "Успешный выход"}

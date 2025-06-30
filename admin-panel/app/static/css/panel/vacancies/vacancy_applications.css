@@ -316,7 +316,7 @@
     flex-wrap: wrap;
 }
 
-.btn-approve, .btn-reject, .btn-delete, .btn-change-status, .btn-view-details {
+.btn-delete, .btn-change-status {
     padding: 8px 16px;
     border-radius: 6px;
     text-decoration: none;
@@ -328,31 +328,13 @@
     font-family: Montserrat;
 }
 
-.btn-approve {
-    background: #27ae60;
-    color: white;
-}
-
-.btn-approve:hover {
-    background: #229954;
-}
-
-.btn-reject {
+.btn-delete {
     background: #e74c3c;
     color: white;
 }
 
-.btn-reject:hover {
-    background: #c0392b;
-}
-
-.btn-delete {
-    background: #95a5a6;
-    color: white;
-}
-
 .btn-delete:hover {
-    background: #7f8c8d;
+    background: #c0392b;
 }
 
 .btn-change-status {
@@ -362,15 +344,6 @@
 
 .btn-change-status:hover {
     background: #e67e22;
-}
-
-.btn-view-details {
-    background: #9b59b6;
-    color: white;
-}
-
-.btn-view-details:hover {
-    background: #8e44ad;
 }
 
 .btn-icon {

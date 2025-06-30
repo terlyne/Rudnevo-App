@@ -1,5 +1,6 @@
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+import os
 
 from app.models.student import Student, ApplicationStatus
 from app.schemas.student import StudentCreate, StudentUpdate
@@ -38,6 +39,9 @@ async def create_student(
     student_data = student_in.model_dump()
     if resume_file_path:
         student_data["resume_file"] = resume_file_path
+        # Получаем расширение файла из пути
+        file_extension = os.path.splitext(resume_file_path)[1]
+        student_data["resume_file_extension"] = file_extension
 
     db_student = Student(**student_data)
     db.add(db_student)

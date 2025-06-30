@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Union
+from typing import Union, Optional
 import os
 
 from app.api.deps import get_current_admin_or_superuser
@@ -21,37 +21,14 @@ async def read_news(
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
+    current_user: Optional[User] = Depends(get_current_admin_or_superuser),
 ):
-    """Получить список новостей (открытый эндпоинт)"""
-    # Показываем только видимые новости для публичного доступа
-    return await news_crud.get_news_list(
-        db, skip=skip, limit=limit, show_hidden=False
-    )
-
-
-@router.get("/admin", response_model=list[NewsInDB])
-async def read_news_admin(
-    skip: int = 0,
-    limit: int = 100,
-    show_hidden: bool = True,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
-):
-    """Получить список новостей для администраторов (включая скрытые)"""
-    return await news_crud.get_news_list(
-        db, skip=skip, limit=limit, show_hidden=show_hidden
-    )
-
-
-@router.get("/hidden", response_model=list[NewsInDB])
-async def read_hidden_news(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_admin_or_superuser),
-):
-    """Получить список скрытых новостей (только для администраторов)"""
-    return await news_crud.get_news_list(db, skip=skip, limit=limit, show_hidden=True)
+    """Получить список новостей (открытый эндпоинт, скрытые — только для админов)"""
+    if show_hidden:
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        return await news_crud.get_news_list(db, skip=skip, limit=limit, show_hidden=True)
+    return await news_crud.get_news_list(db, skip=skip, limit=limit, show_hidden=False)
 
 
 @router.get("/{news_id}", response_model=NewsInDB)
