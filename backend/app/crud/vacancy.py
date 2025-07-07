@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.vacancy import Vacancy
-from schemas.vacancy import VacancyCreate, VacancyUpdate
+from app.models.vacancy import Vacancy
+from app.schemas.vacancy import VacancyCreate, VacancyUpdate
 
 
 async def get_vacancy(db: AsyncSession, vacancy_id: int) -> Vacancy | None:

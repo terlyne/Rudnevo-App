@@ -5,8 +5,8 @@ from datetime import datetime
 import logging
 import requests
 
-from api.client import api_client, ValidationError, APIError, PermissionError, NotFoundError
-from utils.panel import get_navigation_elements, login_required, get_current_user, recruiter_restricted, admin_restricted
+from app.api.client import api_client, ValidationError, APIError, PermissionError, NotFoundError
+from app.utils.panel import get_navigation_elements, login_required, get_current_user, recruiter_restricted, admin_restricted
 
 logger = logging.getLogger(__name__)
 

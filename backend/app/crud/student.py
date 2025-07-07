@@ -2,8 +2,8 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import os
 
-from models.student import Student, ApplicationStatus
-from schemas.student import StudentCreate, StudentUpdate
+from app.models.student import Student, ApplicationStatus
+from app.schemas.student import StudentCreate, StudentUpdate
 
 
 async def get_student(db: AsyncSession, student_id: int) -> Student | None:

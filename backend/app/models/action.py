@@ -1,8 +1,8 @@
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import Base
-from db.custom_types import (
+from app.models.base import Base
+from app.db.custom_types import (
     created_at,
     int_pk,
 )

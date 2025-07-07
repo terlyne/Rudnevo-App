@@ -2,8 +2,8 @@ from datetime import date
 from sqlalchemy import String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import Base
-from db.custom_types import str_null_false
+from app.models.base import Base
+from app.db.custom_types import str_null_false
 
 
 class Schedule(Base):

@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from api.deps import get_current_admin_or_superuser, get_current_user_optional
-from crud import feedback as feedback_crud
-from db.session import get_async_session
-from models.user import User
-from schemas.feedback import FeedbackCreate, FeedbackInDB, FeedbackResponse, FeedbackUpdate
-from utils.email import send_feedback_response
+from app.api.deps import get_current_admin_or_superuser, get_current_user_optional
+from app.crud import feedback as feedback_crud
+from app.db.session import get_async_session
+from app.models.user import User
+from app.schemas.feedback import FeedbackCreate, FeedbackInDB, FeedbackResponse, FeedbackUpdate
+from app.utils.email import send_feedback_response
 
 # Публичный роутер для открытых эндпоинтов
 public_router = APIRouter()

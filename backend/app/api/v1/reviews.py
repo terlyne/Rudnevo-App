@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from api.deps import get_current_admin_or_superuser, get_current_user_optional
-from crud import review as review_crud
-from db.session import get_async_session
-from models.user import User
-from schemas.review import ReviewCreate, ReviewUpdate, ReviewInDB
+from app.api.deps import get_current_admin_or_superuser, get_current_user_optional
+from app.crud import review as review_crud
+from app.db.session import get_async_session
+from app.models.user import User
+from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewInDB
 
 # Публичный роутер для открытых эндпоинтов
 public_router = APIRouter()

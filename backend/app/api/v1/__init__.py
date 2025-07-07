@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from api.v1 import (
+from app.api.v1 import (
     auth,
     users,
     news,

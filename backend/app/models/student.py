@@ -3,7 +3,7 @@ from sqlalchemy import String, Text, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
-from models.base import Base
+from app.models.base import Base
 
 
 class ApplicationStatus(str, enum.Enum):

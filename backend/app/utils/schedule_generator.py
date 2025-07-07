@@ -5,6 +5,7 @@ from typing import Dict, List, Any
 import jinja2
 from pathlib import Path
 import json
+from app.crud import college as college_crud
 
 
 class ScheduleTemplateGenerator:
@@ -194,7 +195,6 @@ async def process_excel_schedule(file_path: str, db_session=None) -> List[Dict[s
             colleges_by_name = dict()
             if db_session:
                 try:
-                    from crud import college as college_crud
                     colleges = await college_crud.get_colleges_list(db_session)
                     available_colleges = {college.name for college in colleges}
                     colleges_by_name = {college.name: college.id for college in colleges}

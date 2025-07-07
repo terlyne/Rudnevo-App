@@ -3,8 +3,8 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.schedule import Schedule, ScheduleTemplate
-from schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleTemplateCreate, ScheduleTemplateUpdate
+from app.models.schedule import Schedule, ScheduleTemplate
+from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleTemplateCreate, ScheduleTemplateUpdate
 
 import logging
 

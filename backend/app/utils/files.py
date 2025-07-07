@@ -4,7 +4,7 @@ import uuid
 from fastapi import HTTPException, UploadFile, status
 from PIL import Image
 
-from core.config import settings
+from app.core.config import settings
 import logging
 
 

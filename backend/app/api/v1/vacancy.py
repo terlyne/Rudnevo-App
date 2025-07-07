@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from api.deps import get_current_recruiter, get_current_superuser, get_current_vacancy_user, get_current_user_optional
-from crud import vacancy as vacancy_crud, student as student_crud
-from db.session import get_async_session
-from models.user import User
-from schemas.vacancy import VacancyCreate, VacancyUpdate, VacancyResponse
+from app.api.deps import get_current_recruiter, get_current_superuser, get_current_vacancy_user, get_current_user_optional
+from app.crud import vacancy as vacancy_crud, student as student_crud
+from app.db.session import get_async_session
+from app.models.user import User
+from app.schemas.vacancy import VacancyCreate, VacancyUpdate, VacancyResponse
 
 # Публичный роутер для открытых эндпоинтов
 public_router = APIRouter()

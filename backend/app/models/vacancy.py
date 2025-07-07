@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import String, Text, ForeignKey, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from models.base import Base
+from app.models.base import Base
 
 
 class Vacancy(Base):

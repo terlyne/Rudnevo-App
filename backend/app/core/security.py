@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from jose import jwt
 from pydantic import BaseModel
 
-from core.config import settings
+from app.core.config import settings
 
 # Настройка контекста для хэширования паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

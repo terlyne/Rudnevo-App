@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.review import Review
-from schemas.review import ReviewCreate, ReviewUpdate
+from app.models.review import Review
+from app.schemas.review import ReviewCreate, ReviewUpdate
 
 
 async def get_review(db: AsyncSession, review_id: int) -> Review | None:

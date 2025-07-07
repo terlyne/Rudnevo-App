@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.feedback import Feedback
-from schemas.feedback import FeedbackCreate
+from app.models.feedback import Feedback
+from app.schemas.feedback import FeedbackCreate
 
 
 async def get_feedback(db: AsyncSession, feedback_id: int) -> Feedback | None:

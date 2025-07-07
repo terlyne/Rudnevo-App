@@ -4,14 +4,14 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 
-from api.deps import get_current_admin_or_superuser
-from crud import schedule as schedule_crud
-from db.session import get_async_session
-from models.user import User
-from schemas.schedule import (
+from app.api.deps import get_current_admin_or_superuser
+from app.crud import schedule as schedule_crud
+from app.db.session import get_async_session
+from app.models.user import User
+from app.schemas.schedule import (
     ScheduleTemplateCreate, ScheduleTemplateInDB, ScheduleUploadResponse
 )
-from utils.schedule_generator import process_excel_schedule, validate_schedule_data
+from app.utils.schedule_generator import process_excel_schedule, validate_schedule_data
 
 import logging
 

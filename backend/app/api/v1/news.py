@@ -4,13 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Union, Optional
 import os
 
-from api.deps import get_current_admin_or_superuser, get_current_user_optional
-from crud import news as news_crud
-from db.session import get_async_session
-from models.user import User
-from schemas.news import NewsCreate, NewsUpdate, NewsInDB
-from utils.files import save_image
-from core.config import settings
+from app.api.deps import get_current_admin_or_superuser, get_current_user_optional
+from app.crud import news as news_crud
+from app.db.session import get_async_session
+from app.models.user import User
+from app.schemas.news import NewsCreate, NewsUpdate, NewsInDB
+from app.utils.files import save_image
+from app.core.config import settings
 
 # Публичный роутер для открытых эндпоинтов
 public_router = APIRouter()

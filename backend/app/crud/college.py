@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.college import College
-from schemas.college import CollegeCreate, CollegeUpdate
+from app.models.college import College
+from app.schemas.college import CollegeCreate, CollegeUpdate
 
 
 async def get_colleges_list(

@@ -2,8 +2,8 @@ from datetime import datetime
 from sqlalchemy import select, desc, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.action import Action
-from schemas.action import ActionCreate
+from app.models.action import Action
+from app.schemas.action import ActionCreate
 
 
 async def get_actions(db: AsyncSession, limit: int = 10) -> list[Action]:

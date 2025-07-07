@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.partner import Partner
-from schemas.partner import PartnerCreate, PartnerUpdate
+from app.models.partner import Partner
+from app.schemas.partner import PartnerCreate, PartnerUpdate
 
 
 async def get_partners_list(
