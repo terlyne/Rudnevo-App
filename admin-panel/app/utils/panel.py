@@ -1,6 +1,6 @@
 from flask import request, redirect, url_for, session
 from functools import wraps
-from app.api.client import api_client
+from api.client import api_client
 
 
 def login_required(f):
@@ -10,6 +10,15 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if "access_token" not in session:
             return redirect(url_for("auth.login"))
+        
+        # Проверяем, что токен действителен
+        try:
+            current_user = get_current_user()
+            if not current_user:
+                return redirect(url_for("auth.login"))
+        except Exception:
+            return redirect(url_for("auth.login"))
+        
         return f(*args, **kwargs)
 
     return decorated_function
@@ -45,7 +54,13 @@ def get_current_user():
     """Получить текущего пользователя"""
     try:
         return api_client.get_current_user()
-    except:
+    except Exception as e:
+        # Если токен истек, очищаем сессию
+        from flask import session
+        if "access_token" in session:
+            session.pop("access_token")
+        if "refresh_token" in session:
+            session.pop("refresh_token")
         return None
 
 
@@ -63,6 +78,7 @@ def get_navigation_elements() -> dict[str, dict]:
         "panel.news_list": "Новости",
         "panel.reviews_list": "Отзывы",
         "panel.schedule_list": "Расписание",
+        "panel.partners_list": "Партнеры",
     }
 
     # Для суперпользователей добавляем дополнительные элементы

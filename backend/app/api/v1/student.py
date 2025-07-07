@@ -5,19 +5,19 @@ from typing import Optional, Union
 from datetime import date
 import os
 
-from app.api.deps import get_current_vacancy_user
-from app.crud import student as student_crud, vacancy as vacancy_crud
-from app.db.session import get_async_session
-from app.models.user import User
-from app.models.student import ApplicationStatus
-from app.schemas.student import (
+from api.deps import get_current_vacancy_user
+from crud import student as student_crud, vacancy as vacancy_crud
+from db.session import get_async_session
+from models.user import User
+from models.student import ApplicationStatus
+from schemas.student import (
     StudentCreate,
     StudentUpdate,
     StudentResponse,
     StudentBulkStatusUpdate,
 )
-from app.utils.files import save_upload_file
-from app.core.config import settings
+from utils.files import save_upload_file
+from core.config import settings
 
 router = APIRouter()
 

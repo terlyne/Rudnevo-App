@@ -1,11 +1,12 @@
-from flask import Blueprint, request, render_template, flash, redirect, url_for, send_file, jsonify
+from flask import Blueprint, request, render_template, flash, redirect, url_for, send_file, jsonify, Response
+from flask_wtf.csrf import generate_csrf
 import io
 from datetime import datetime
 import logging
 import requests
 
-from app.api.client import api_client, ValidationError, APIError, PermissionError
-from app.utils.panel import get_navigation_elements, login_required, get_current_user, recruiter_restricted, admin_restricted
+from api.client import api_client, ValidationError, APIError, PermissionError, NotFoundError
+from utils.panel import get_navigation_elements, login_required, get_current_user, recruiter_restricted, admin_restricted
 
 logger = logging.getLogger(__name__)
 
@@ -732,58 +733,115 @@ def review_delete(review_id):
 @login_required
 @recruiter_restricted
 def schedule_list():
-    nav_elements = get_navigation_elements()
-    current_user = get_current_user()
-    try:
-        # Получаем список колледжей с HTML
-        templates = api_client.get_schedule_templates()
+    if request.method == "GET":
+        nav_elements = get_navigation_elements()
+        current_user = get_current_user()
         
-        if not templates:
+        try:
+            # Получаем список колледжей
+            colleges = api_client.get_colleges()
+            
+            # Получаем шаблоны расписаний
+            templates = api_client.get_schedule_templates()
+            
+            # Создаем словарь для быстрого поиска шаблонов по названию колледжа
+            templates_dict = {template.get("college_name", ""): template for template in templates}
+            
+            # Отладочная информация
+            logger.info(f"Found {len(templates)} schedule templates")
+            for template in templates:
+                logger.info(f"Template: {template}")
+            
+            # Объединяем колледжи с их расписаниями
+            colleges_with_schedules = []
+            for college in colleges:
+                college_name = college.get("name", "")
+                template = templates_dict.get(college_name)
+                
+                college_data = {
+                    "id": college.get("id"),
+                    "name": college_name,
+                    "image_url": college.get("image_url"),
+                    "has_schedule": template is not None,
+                    "template_id": template.get("id") if template else None,
+                    "schedule_template_id": template.get("id") if template else None,  # Дублируем для совместимости
+                    "html_content": template.get("html_content") if template else None
+                }
+                logger.info(f"College {college_name}: has_schedule={college_data['has_schedule']}, template_id={college_data['template_id']}")
+                colleges_with_schedules.append(college_data)
+            
+            # Получаем HTML для первого колледжа с расписанием (если есть)
+            schedule_html = ""
+            has_schedules = any(college["has_schedule"] for college in colleges_with_schedules)
+            
+            if has_schedules:
+                first_college_with_schedule = next((college for college in colleges_with_schedules if college["has_schedule"]), None)
+                if first_college_with_schedule and first_college_with_schedule["html_content"]:
+                    schedule_html = first_college_with_schedule["html_content"]
+            
             return render_template(
                 "panel/schedule/schedule_list.html",
                 nav_elements=nav_elements,
+                colleges=colleges_with_schedules,
+                schedule_html=schedule_html,
+                has_schedules=has_schedules,
                 current_user=current_user,
-                templates=[],
-                schedule_html="",
-                has_schedules=False
+                csrf_token=generate_csrf()
             )
-        
-        # Используем HTML из первого колледжа по умолчанию
-        schedule_html = ""
-        if templates and hasattr(templates[0], 'html_content') and templates[0].html_content:
-            schedule_html = templates[0].html_content
-        elif templates:
-            # Fallback: получаем HTML для первого колледжа
-            first_college = templates[0]["college_name"]
-            backend_url = f"{api_client.base_url}/api/v1/schedule/templates/{first_college}"
-            resp = requests.get(backend_url)
+        except Exception as e:
+            logger.error(f"Error loading schedule: {str(e)}")
+            flash("Ошибка при загрузке расписания", category="error")
+            return render_template(
+                "panel/schedule/schedule_list.html",
+                nav_elements=nav_elements,
+                colleges=[],
+                schedule_html="",
+                has_schedules=False,
+                current_user=current_user,
+                csrf_token=generate_csrf()
+            )
+    
+    elif request.method == "POST":
+        # Обработка создания колледжа
+        try:
+            current_user = get_current_user()
+            if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+                flash("У вас нет прав на создание колледжей", category="error")
+                return redirect(url_for("panel.schedule_list"))
             
-            if resp.status_code == 200:
-                schedule_html = resp.text
-            else:
-                schedule_html = f"<div class='error'>Ошибка загрузки расписания для {first_college}</div>"
-        
-        logger.info(f"Загружено {len(templates)} колледжей, HTML длина: {len(schedule_html)}")
-        
-        return render_template(
-            "panel/schedule/schedule_list.html",
-            nav_elements=nav_elements,
-            current_user=current_user,
-            templates=templates,
-            schedule_html=schedule_html,
-            has_schedules=True
-        )
-        
-    except Exception as e:
-        logger.error(f"Ошибка при получении расписания: {str(e)}")
-        return render_template(
-            "panel/schedule/schedule_list.html",
-            nav_elements=nav_elements,
-            current_user=current_user,
-            templates=[],
-            schedule_html=f"<div class='error'>Ошибка загрузки расписания: {str(e)}</div>",
-            has_schedules=False
-        )
+            # Получаем данные формы
+            name = request.form.get("name")
+            
+            if not name:
+                flash("Заполните название колледжа", category="error")
+                return redirect(url_for("panel.schedule_list"))
+            
+            # Создаем колледж
+            college_data = {
+                "name": name
+            }
+            
+            # Обрабатываем изображение, если оно загружено
+            if "image" in request.files:
+                image_file = request.files["image"]
+                if image_file and image_file.filename:
+                    college_data["image"] = image_file
+            
+            result = api_client.create_college(**college_data)
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f"добавил колледж \"{name}\"")
+            except:
+                pass
+            
+            flash("Колледж успешно создан", category="success")
+            return redirect(url_for("panel.schedule_list"))
+            
+        except Exception as e:
+            logger.error(f"Error creating college: {str(e)}")
+            flash("Ошибка при создании колледжа", category="error")
+            return redirect(url_for("panel.schedule_list"))
 
 
 @panel.route("/users", methods=["GET", "POST"], endpoint="users_list")
@@ -1459,60 +1517,7 @@ def application_delete(application_id):
     return redirect(url_for("panel.vacancies_list"))
 
 
-@panel.route("/schedule/upload-excel", methods=["GET", "POST"])
-@login_required
-def upload_schedule_template():
-    if request.method == "GET":
-        nav_elements = get_navigation_elements()
-        current_user = get_current_user()
-        return render_template(
-            "panel/schedule/upload_schedule.html",
-            nav_elements=nav_elements,
-            current_user=current_user
-        )
-    
-    if request.method == "POST":
-        try:
-            current_user = get_current_user()
-            if not current_user:
-                flash("Ошибка аутентификации", category="error")
-                return redirect(url_for("panel.upload_schedule_template"))
-            
-            # Проверяем, что файл был загружен
-            if "file" not in request.files:
-                flash("Файл не выбран", category="error")
-                return redirect(url_for("panel.upload_schedule_template"))
-            
-            file = request.files["file"]
-            if file.filename == "":
-                flash("Файл не выбран", category="error")
-                return redirect(url_for("panel.upload_schedule_template"))
-            
-            # Проверяем расширение файла
-            if not file.filename.endswith(('.xlsx', '.xls')):
-                flash("Поддерживаются только файлы Excel (.xlsx, .xls)", category="error")
-                return redirect(url_for("panel.upload_schedule_template"))
-            
-            # Отправляем файл на backend
-            files = {"file": (file.filename, file.read(), file.content_type)}
-            result = api_client.upload_schedule_excel(files)
-            
-            # Создаем событие
-            try:
-                action_text = f'загрузил Excel файл с расписаниями: {file.filename}'
-                if len(action_text) > 50:
-                    action_text = action_text[:47] + '...'
-                safe_create_action(current_user.get("username", "Администратор"), action_text)
-            except:
-                pass
-            
-            flash("Расписание успешно загружено", category="success")
-            return redirect(url_for("panel.schedule_list"))
-            
-        except Exception as e:
-            logger.error(f"Error uploading schedule: {str(e)}")
-            flash(f"Ошибка при загрузке расписания: {str(e)}", category="error")
-            return redirect(url_for("panel.upload_schedule_template"))
+
 
 
 @panel.route("/schedule/template/<college_name>")
@@ -1552,6 +1557,9 @@ def delete_schedule_template(template_id):
         logger.info(f"API call successful, result: {result}")
         
         flash("Расписание успешно удалено", "success")
+    except NotFoundError as e:
+        logger.error(f"Schedule template {template_id} not found: {str(e)}")
+        flash("Расписание не найдено", "error")
     except Exception as e:
         logger.error(f"Error deleting schedule template {template_id}: {str(e)}")
         logger.error(f"Exception type: {type(e)}")
@@ -1589,6 +1597,473 @@ def delete_all_schedule_templates():
         return redirect(url_for("panel.schedule_list"))
 
 
+@panel.route("/partners", methods=["GET", "POST"], endpoint="partners_list")
+@login_required
+@recruiter_restricted
+def partners_list():
+    if request.method == "GET":
+        nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
+        try:
+            partners = api_client.get_partners(show_hidden=True)
+            
+            # Форматируем даты
+            for partner in partners:
+                if "created_at" in partner:
+                    try:
+                        partner["created_at"] = datetime.fromisoformat(
+                            partner["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        partner["created_at"] = "Неизвестно"
+                
+                if "updated_at" in partner and partner["updated_at"]:
+                    try:
+                        partner["updated_at"] = datetime.fromisoformat(
+                            partner["updated_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        partner["updated_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/partners/partners_list.html",
+                nav_elements=nav_elements,
+                partners=partners,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading partners: {str(e)}")
+            flash("Ошибка при загрузке партнеров", category="error")
+            return render_template(
+                "panel/partners/partners_list.html",
+                nav_elements=nav_elements,
+                partners=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/partners/create", methods=["POST"], endpoint="partner_create")
+@login_required
+def partner_create():
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        name = request.form.get("name")
+        description = request.form.get("description")
+        is_active = request.form.get("is_active") == "on"
+        
+        if not name:
+            flash("Название партнера обязательно", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        # Обрабатываем изображение
+        image = request.files.get("image")
+        data = {
+            "name": name,
+            "description": description,
+            "is_active": is_active
+        }
+        
+        if image and image.filename:
+            # Читаем файл один раз
+            image_data = image.read()
+            files = {"image": (image.filename, image_data, image.content_type)}
+            data.update(files)
+        
+        result = api_client.create_partner(**data)
+        
+        if result:
+            flash("Партнер успешно создан", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'создал партнера: "{name}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при создании партнера", category="error")
+        
+        return redirect(url_for("panel.partners_list"))
+        
+    except Exception as e:
+        logger.error(f"Error creating partner: {str(e)}")
+        flash("Ошибка при создании партнера", category="error")
+        return redirect(url_for("panel.partners_list"))
+
+
+@panel.route("/partners/<int:partner_id>/edit", methods=["POST"], endpoint="partner_edit")
+@login_required
+def partner_edit(partner_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        name = request.form.get("name")
+        description = request.form.get("description")
+        is_active = request.form.get("is_active") == "on"
+        remove_image = request.form.get("remove_image") == "on"
+        
+        if not name:
+            flash("Название партнера обязательно", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        # Обрабатываем изображение
+        image = request.files.get("image")
+        data = {
+            "name": name,
+            "description": description,
+            "is_active": is_active
+        }
+        
+        if remove_image:
+            data["remove_image"] = "true"
+        elif image and image.filename:
+            # Читаем файл один раз
+            image_data = image.read()
+            files = {"image": (image.filename, image_data, image.content_type)}
+            data.update(files)
+        
+        result = api_client.update_partner(partner_id, **data)
+        
+        if result:
+            flash("Партнер успешно обновлен", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'обновил партнера: "{name}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при обновлении партнера", category="error")
+        
+        return redirect(url_for("panel.partners_list"))
+        
+    except Exception as e:
+        logger.error(f"Error updating partner: {str(e)}")
+        flash("Ошибка при обновлении партнера", category="error")
+        return redirect(url_for("panel.partners_list"))
+
+
+@panel.route("/partners/<int:partner_id>/delete", methods=["POST"], endpoint="partner_delete")
+@login_required
+def partner_delete(partner_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        # Получаем информацию о партнере перед удалением
+        partner = api_client.get_partner(partner_id)
+        partner_name = partner.get("name", "Неизвестный партнер") if partner else "Неизвестный партнер"
+        
+        result = api_client.delete_partner(partner_id)
+        
+        if result:
+            flash("Партнер успешно удален", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'удалил партнера: "{partner_name}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при удалении партнера", category="error")
+        
+        return redirect(url_for("panel.partners_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting partner: {str(e)}")
+        flash("Ошибка при удалении партнера", category="error")
+        return redirect(url_for("panel.partners_list"))
+
+
+@panel.route("/partners/<int:partner_id>", methods=["GET"], endpoint="partner_detail")
+@login_required
+def partner_detail(partner_id):
+    try:
+        partner = api_client.get_partner(partner_id)
+        if partner:
+            return jsonify(partner)
+        else:
+            return jsonify({"error": "Партнер не найден"}), 404
+    except Exception as e:
+        logger.error(f"Error getting partner {partner_id}: {str(e)}")
+        return jsonify({"error": "Ошибка при получении данных партнера"}), 500
+
+
+@panel.route("/partners/<int:partner_id>/image", methods=["GET"], endpoint="partner_image")
+@login_required
+def partner_image(partner_id):
+    try:
+        partner = api_client.get_partner(partner_id)
+        if partner and partner.get("image_url"):
+            # Перенаправляем на изображение с бэкенда
+            backend_url = f"{api_client.base_url}/api/v1/partners/{partner_id}/image"
+            response = requests.get(backend_url, stream=True)
+            if response.status_code == 200:
+                return Response(response.iter_content(chunk_size=1024), 
+                              content_type=response.headers.get('content-type', 'image/jpeg'))
+            else:
+                return "Изображение не найдено", 404
+        else:
+            return "Изображение не найдено", 404
+    except Exception as e:
+        logger.error(f"Error getting partner image {partner_id}: {str(e)}")
+        return "Ошибка при получении изображения", 500
+
+
+@panel.route("/partners/<int:partner_id>/toggle-visibility", methods=["POST"], endpoint="partner_toggle_visibility")
+@login_required
+def partner_toggle_visibility(partner_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.partners_list"))
+        
+        result = api_client.toggle_partner_visibility(partner_id)
+        
+        if result:
+            status = "активировал" if result.get("is_active") else "деактивировал"
+            flash(f"Партнер {status}", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'{status} партнера: "{result.get("name", "")}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при изменении статуса партнера", category="error")
+        
+        return redirect(url_for("panel.partners_list"))
+        
+    except Exception as e:
+        logger.error(f"Error toggling partner visibility: {str(e)}")
+        flash("Ошибка при изменении статуса партнера", category="error")
+        return redirect(url_for("panel.partners_list"))
+
+
+# Роуты для управления колледжами
+@panel.route("/colleges", methods=["GET", "POST"], endpoint="colleges_list")
+@login_required
+@recruiter_restricted
+def colleges_list():
+    if request.method == "GET":
+        nav_elements = get_navigation_elements()
+        current_user = get_current_user()
+        
+        try:
+            colleges = api_client.get_colleges()
+            
+            # Форматируем даты
+            for college in colleges:
+                if "created_at" in college:
+                    try:
+                        college["created_at"] = datetime.fromisoformat(
+                            college["created_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        college["created_at"] = "Неизвестно"
+                
+                if "updated_at" in college and college["updated_at"]:
+                    try:
+                        college["updated_at"] = datetime.fromisoformat(
+                            college["updated_at"].replace("Z", "+00:00")
+                        ).strftime("%d.%m.%Y %H:%M")
+                    except (ValueError, TypeError):
+                        college["updated_at"] = "Неизвестно"
+            
+            return render_template(
+                "panel/colleges/colleges_list.html",
+                nav_elements=nav_elements,
+                colleges=colleges,
+                current_user=current_user
+            )
+        except Exception as e:
+            logger.error(f"Error loading colleges: {str(e)}")
+            flash("Ошибка при загрузке колледжей", category="error")
+            return render_template(
+                "panel/colleges/colleges_list.html",
+                nav_elements=nav_elements,
+                colleges=[],
+                current_user=current_user
+            )
+
+
+@panel.route("/colleges/create", methods=["POST"], endpoint="college_create")
+@login_required
+def college_create():
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.colleges_list"))
+        
+        name = request.form.get("name")
+        image = request.files.get("image")
+        
+        # HTML5 валидация будет показывать "Заполните это поле."
+        # если поля не заполнены, поэтому здесь просто создаем колледж
+        
+        try:
+            # Создаем колледж с изображением
+            data = {"name": name, "image": image}
+            
+            result = api_client.create_college(**data)
+            
+            flash("Колледж успешно создан", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'создал колледж: "{name}"')
+            except:
+                pass
+                
+        except Exception as e:
+            logger.error(f"Error creating college: {str(e)}")
+            flash("Ошибка при создании колледжа", category="error")
+        
+        return redirect(url_for("panel.colleges_list"))
+        
+    except Exception as e:
+        logger.error(f"Error creating college: {str(e)}")
+        flash("Ошибка при создании колледжа", category="error")
+        return redirect(url_for("panel.colleges_list"))
+
+
+@panel.route("/colleges/<int:college_id>/edit", methods=["POST"], endpoint="college_edit")
+@login_required
+def college_edit(college_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.colleges_list"))
+        
+        name = request.form.get("name")
+        remove_image = request.form.get("remove_image") == "on"
+        
+        # HTML5 валидация будет показывать "Заполните это поле."
+        # если поля не заполнены, поэтому здесь просто обновляем колледж
+        
+        # Обрабатываем изображение
+        image = request.files.get("image")
+        data = {
+            "name": name
+        }
+        
+        if remove_image:
+            data["remove_image"] = "true"
+        elif image and image.filename:
+            data["image"] = image
+        
+        result = api_client.update_college(college_id, **data)
+        
+        if result:
+            flash("Колледж успешно обновлен", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'обновил колледж: "{name}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при обновлении колледжа", category="error")
+        
+        return redirect(url_for("panel.colleges_list"))
+        
+    except Exception as e:
+        logger.error(f"Error updating college: {str(e)}")
+        flash("Ошибка при обновлении колледжа", category="error")
+        return redirect(url_for("panel.colleges_list"))
+
+
+@panel.route("/colleges/<int:college_id>/delete", methods=["POST"], endpoint="college_delete")
+@login_required
+def college_delete(college_id):
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            flash("Ошибка аутентификации", category="error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Проверяем CSRF токен
+        csrf_token = request.form.get('csrf_token')
+        if not csrf_token:
+            logger.error("CSRF token missing in college delete")
+            flash("Ошибка безопасности", "error")
+            return redirect(url_for("panel.schedule_list"))
+        
+        # Получаем информацию о колледже перед удалением
+        college = api_client.get_college(college_id)
+        college_name = college.get("name", "Неизвестный колледж") if college else "Неизвестный колледж"
+        
+        result = api_client.delete_college(college_id)
+        
+        if result:
+            flash("Колледж успешно удален", category="success")
+            
+            # Создаем событие
+            try:
+                safe_create_action(current_user.get("username", "Администратор"), f'удалил колледж: "{college_name}"')
+            except:
+                pass
+        else:
+            flash("Ошибка при удалении колледжа", category="error")
+        
+        return redirect(url_for("panel.schedule_list"))
+        
+    except Exception as e:
+        logger.error(f"Error deleting college: {str(e)}")
+        flash("Ошибка при удалении колледжа", category="error")
+        return redirect(url_for("panel.schedule_list"))
+
+
+@panel.route("/colleges/<int:college_id>", methods=["GET"], endpoint="college_detail")
+@login_required
+def college_detail(college_id):
+    try:
+        college = api_client.get_college(college_id)
+        if college:
+            return jsonify(college)
+        else:
+            return jsonify({"error": "Колледж не найден"}), 404
+    except Exception as e:
+        logger.error(f"Error getting college {college_id}: {str(e)}")
+        return jsonify({"error": "Ошибка при получении данных колледжа"}), 500
+
+
+@panel.route("/colleges/<int:college_id>/image", methods=["GET"], endpoint="college_image")
+@login_required
+def college_image(college_id):
+    try:
+        college = api_client.get_college(college_id)
+        if college and college.get("image_url"):
+            # Перенаправляем на изображение с бэкенда
+            backend_url = f"{api_client.base_url}/api/v1/colleges/{college_id}/image"
+            response = requests.get(backend_url, stream=True)
+            if response.status_code == 200:
+                return Response(response.iter_content(chunk_size=1024), 
+                              content_type=response.headers.get('content-type', 'image/jpeg'))
+            else:
+                return "Изображение не найдено", 404
+        else:
+            return "Изображение не найдено", 404
+    except Exception as e:
+        logger.error(f"Error getting college image {college_id}: {str(e)}")
+        return "Ошибка при получении изображения", 500
+
+
+
+
+
 @panel.route("/api/schedule/templates/<college_name>")
 @login_required
 def api_get_schedule_template(college_name):
@@ -1603,8 +2078,149 @@ def api_get_schedule_template(college_name):
         logger.error(f"Error getting schedule template for {college_name}: {str(e)}")
         return f"<div class='error'>Ошибка получения шаблона: {str(e)}</div>"
 
+
+# API маршруты для управления колледжами
+@panel.route("/api/colleges", methods=["POST"])
+@login_required
+def api_create_college():
+    try:
+        current_user = get_current_user()
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            return jsonify({"error": "У вас нет прав на создание колледжей"}), 403
+        
+        # Получаем данные формы
+        name = request.form.get("name")
+        
+        if not name:
+            return jsonify({"error": "Заполните название колледжа"}), 400
+        
+        # Создаем колледж
+        college_data = {
+            "name": name
+        }
+        
+        # Обрабатываем изображение, если оно загружено
+        if "image" in request.files:
+            image_file = request.files["image"]
+            if image_file and image_file.filename:
+                # Читаем файл один раз
+                image_data = image_file.read()
+                college_data["image"] = (image_file.filename, image_data, image_file.content_type)
+        
+        result = api_client.create_college(**college_data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"добавил колледж \"{name}\"")
+        except:
+            pass
+        
+        return jsonify({"success": True, "message": "Колледж успешно создан"})
+        
+    except Exception as e:
+        logger.error(f"Error creating college: {str(e)}")
+        return jsonify({"error": "Ошибка при создании колледжа"}), 500
+
+
+@panel.route("/api/colleges/<int:college_id>", methods=["PUT"])
+@login_required
+def api_update_college(college_id):
+    try:
+        current_user = get_current_user()
+        if not current_user or (not current_user.get("is_superuser") and current_user.get("is_recruiter")):
+            return jsonify({"error": "У вас нет прав на редактирование колледжей"}), 403
+        
+        # Получаем данные формы
+        name = request.form.get("name")
+        
+        if not name:
+            return jsonify({"error": "Заполните название колледжа"}), 400
+        
+        # Обновляем колледж
+        college_data = {
+            "name": name
+        }
+        
+        # Обрабатываем изображение, если оно загружено
+        if "image" in request.files:
+            image_file = request.files["image"]
+            if image_file and image_file.filename:
+                # Читаем файл один раз
+                image_data = image_file.read()
+                college_data["image"] = (image_file.filename, image_data, image_file.content_type)
+        
+        # Обрабатываем удаление изображения
+        if request.form.get("remove_image") == "on":
+            college_data["remove_image"] = True
+        
+        result = api_client.update_college(college_id, **college_data)
+        
+        # Создаем событие
+        try:
+            safe_create_action(current_user.get("username", "Администратор"), f"отредактировал колледж \"{name}\"")
+        except:
+            pass
+        
+        return jsonify({"success": True, "message": "Колледж успешно обновлен"})
+        
+    except Exception as e:
+        logger.error(f"Error updating college {college_id}: {str(e)}")
+        return jsonify({"error": "Ошибка при обновлении колледжа"}), 500
+
+
+# Удаляем этот маршрут, так как теперь используется Flask-форма
+# @panel.route("/api/colleges/<int:college_id>", methods=["DELETE"])
+# @login_required
+# def api_delete_college(college_id):
+#     # Этот маршрут больше не используется
+#     pass
+
+
+
+
+
 # --- универсальная обрезка action для всех событий ---
 def safe_create_action(username, action):
     if action and len(action) > 110:
         action = action[:107] + '...'
     return api_client.create_action(username=username, action=action)
+
+
+@panel.route("/api/schedule/upload-excel", methods=["POST"])
+@login_required
+def api_upload_schedule_excel():
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"error": "Ошибка аутентификации"}), 401
+        
+        # Проверяем, что файл был загружен
+        if "file" not in request.files:
+            return jsonify({"error": "Файл не выбран"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Файл не выбран"}), 400
+        
+        # Проверяем расширение файла
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            return jsonify({"error": "Поддерживаются только файлы Excel (.xlsx, .xls)"}), 400
+        
+        # Отправляем файл на backend
+        files = {"file": (file.filename, file.read(), file.content_type)}
+        result = api_client.upload_schedule_excel(files)
+        
+        # Создаем событие
+        try:
+            action_text = f'загрузил Excel файл с расписаниями: {file.filename}'
+            if len(action_text) > 50:
+                action_text = action_text[:47] + '...'
+            safe_create_action(current_user.get("username", "Администратор"), action_text)
+        except:
+            pass
+        
+        return jsonify({"status": "success", "message": "Расписание успешно загружено"})
+        
+    except Exception as e:
+        logger.error(f"Error uploading schedule: {str(e)}")
+        return jsonify({"error": f"Ошибка при загрузке расписания: {str(e)}"}), 500

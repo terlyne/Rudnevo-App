@@ -1,24 +1,23 @@
+/* Основной контейнер страницы расписания */
 .schedule-container {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
 }
 
+/* Заголовок страницы */
 .schedule-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 30px;
-    background: #fff;
-    padding: 24px;
-    box-shadow: none;
 }
 
 .header-content {
     flex: 1;
 }
 
-.header-content h1 {
+.schedule-header h1 {
     font-size: 28px;
     color: #2c3e50;
     font-weight: 600;
@@ -59,35 +58,27 @@
 
 /* Стили для кнопок */
 .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
+    background: #636363;
+    color: white;
     border: none;
     border-radius: 12px;
+    padding: 12px 24px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     transition: all 0.3s ease;
-    text-decoration: none;
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-}
-
-.btn-primary {
-    background: #636363;
-    color: #fff;
-}
-
-.btn-primary:hover {
     background: #4a4a4a;
+    transform: translateY(-2px);
 }
 
 .btn-danger {
     background: #e74c3c;
-    color: #fff;
 }
 
 .btn-danger:hover {
@@ -96,7 +87,6 @@
 
 .btn-secondary {
     background: #95a5a6;
-    color: #fff;
 }
 
 .btn-secondary:hover {
@@ -107,34 +97,35 @@
     font-size: 16px;
 }
 
-/* Список колледжей */
+/* Список колледжей - горизонтальный */
 .colleges-list {
     display: flex;
     overflow-x: auto;
-    gap: 12px;
+    gap: 16px;
     padding: 16px 0;
     margin-bottom: 20px;
-    border-bottom: 1px solid #e9ecef;
 }
 
 .college-item {
-    background: #f8f9fa;
+    background: #ffffff;
     border: 2px solid #636363;
-    border-radius: 12px;
-    padding: 12px 20px;
+    border-radius: 24px;
+    padding: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
-    min-width: fit-content;
+    min-width: 200px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .college-item:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .college-item.active {
@@ -143,32 +134,190 @@
     color: #fff;
 }
 
-.college-name {
-    font-weight: 600;
-    font-size: 14px;
+.college-item.active .college-name {
+    color: #fff;
 }
 
-/* Убираем стрелки */
-.college-item::after {
-    display: none;
+.college-item.active .schedule-status {
+    color: #fff;
+}
+
+.college-item.active .college-actions .btn-edit:hover {
+    background: #fff;
+    color: #636363;
+}
+
+.college-item.active .college-actions .btn-delete:hover {
+    background: #fff;
+    color: #e74c3c;
+}
+
+.college-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid #e9ecef;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.college-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.college-emoji {
+    font-size: 32px;
+    color: #636363;
+}
+
+.college-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.schedule-status {
+    font-size: 12px;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+.college-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+}
+
+.btn-action:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: scale(1.1);
+}
+
+.delete-schedule-btn {
+    color: #e74c3c;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.delete-schedule-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+    color: #c0392b;
 }
 
 /* Область отображения расписания */
-.schedule-display-area {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
-    margin-top: 15px;
+.schedule-display {
+    background: #ffffff;
+    border: 2px solid #636363;
+    border-radius: 24px;
+    padding: 24px;
     min-height: 400px;
-    overflow: auto;
-    position: relative;
-    z-index: 1;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-/* Стили для HTML расписания */
+.display-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.display-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.display-subtitle {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin: 0;
+}
+
+.display-content {
+    min-height: 300px;
+}
+
+/* Состояние пустого расписания */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Состояние загрузки */
+.loading-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e9ecef;
+    border-top: 4px solid #636363;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-state p {
+    margin: 0;
+    color: #636363;
+    font-size: 14px;
+}
+
+/* Стили для отображения расписания */
 .schedule-display-area .schedule-container {
     padding: 0;
     max-width: none;
@@ -309,7 +458,7 @@
 }
 
 .schedule-display-area .group-name {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
     margin: 0;
@@ -393,6 +542,24 @@
     line-height: 1.5;
 }
 
+/* Кнопка удаления изображения */
+.btn-remove-image {
+    background: #f44336;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+    display: inline-block;
+}
+
+.btn-remove-image:hover {
+    background: #c62828;
+}
+
 /* Модальное окно */
 .modal {
     display: none;
@@ -412,7 +579,9 @@
     border: 2px solid #636363;
     border-radius: 24px;
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -442,8 +611,12 @@
     color: #2c3e50;
 }
 
-.modal-body {
+#collegeForm {
     padding: 24px;
+}
+
+.modal-body {
+    padding: 0;
 }
 
 .modal-body p {
@@ -457,6 +630,36 @@
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.modal-actions .btn-cancel,
+.modal-actions .btn-delete {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-actions .btn-cancel {
+    background: #95a5a6;
+    color: white;
+}
+
+.modal-actions .btn-cancel:hover {
+    background: #7f8c8d;
+}
+
+.modal-actions .btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.modal-actions .btn-delete:hover {
+    background: #c0392b;
 }
 
 /* Адаптивность */
@@ -527,6 +730,7 @@
     }
 }
 
+/* Дополнительные стили для списка расписаний */
 .schedule-list {
     padding: 20px;
 }
@@ -637,4 +841,143 @@
     font-size: 16px;
     margin-top: 4px;
     display: block;
+}
+
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #636363;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group input[type="file"] {
+    padding: 12px 24px;
+    border: 2px solid #636363;
+    border-radius: 12px;
+    width: 200px;
+    box-sizing: border-box;
+    background: #636363;
+    color: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    font-family: inherit;
+    text-align: center;
+    position: relative;
+}
+
+.form-group input[type="file"]::before {
+    content: "Выбрать файл";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    white-space: nowrap;
+    color: white;
+}
+
+.form-group input[type="file"]::-webkit-file-upload-button {
+    display: none;
+}
+
+.form-group input[type="file"]::file-selector-button {
+    display: none;
+}
+
+.form-group input[type="file"]:hover {
+    background: #4a4a4a;
+    border-color: #4a4a4a;
+    transform: translateY(-2px);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.checkbox-label input[type="checkbox"] {
+    accent-color: #636363;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.btn-cancel,
+.btn-save {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #7f8c8d;
+}
+
+.btn-save {
+    background: #636363;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #4a4a4a;
+}
+
+.btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
 }

@@ -1,7 +1,7 @@
 from datetime import date
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.student import ApplicationStatus
+from models.student import ApplicationStatus
 
 
 class StudentBase(BaseModel):

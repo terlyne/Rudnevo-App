@@ -1,11 +1,13 @@
-from app.models.base import Base
-from app.models.user import User
-from app.models.news import News
-from app.models.review import Review
-from app.models.feedback import Feedback
-from app.models.schedule import Schedule, ScheduleTemplate
-from app.models.vacancy import Vacancy
-from app.models.student import Student, ApplicationStatus
+from models.base import Base
+from models.user import User
+from models.news import News
+from models.review import Review
+from models.feedback import Feedback
+from models.schedule import Schedule, ScheduleTemplate
+from models.vacancy import Vacancy
+from models.student import Student, ApplicationStatus
+from models.partner import Partner
+from models.college import College
 
 __all__ = [
     "Base",
@@ -18,4 +20,6 @@ __all__ = [
     "Vacancy",
     "Student",
     "ApplicationStatus",
+    "Partner",
+    "College",
 ]

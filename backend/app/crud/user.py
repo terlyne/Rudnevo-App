@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union
 import logging
 
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
-from app.core.security import get_password_hash, verify_password
-from app.core.config import settings
+from models.user import User
+from schemas.user import UserCreate, UserUpdate
+from core.security import get_password_hash, verify_password
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 

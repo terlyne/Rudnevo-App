@@ -42,6 +42,7 @@ class ScheduleInDB(ScheduleBase):
 
 
 class ScheduleTemplateBase(BaseModel):
+    college_id: int
     college_name: str
     schedule_data: Dict[str, Any]
     is_active: bool = True
@@ -52,6 +53,7 @@ class ScheduleTemplateCreate(ScheduleTemplateBase):
 
 
 class ScheduleTemplateUpdate(ScheduleTemplateBase):
+    college_id: int | None = None
     college_name: str | None = None
     schedule_data: Dict[str, Any] | None = None
     is_active: bool | None = None

@@ -8,11 +8,12 @@ function createSchedule() {
     document.getElementById('scheduleModal').style.display = 'block';
 }
 
-// Функции для работы с модальными окнами расписания
-
-function openScheduleModal() {
+// Редактирование события
+function editSchedule(scheduleId) {
+    currentScheduleId = scheduleId;
+    document.getElementById('modalTitle').textContent = 'Редактировать событие';
+    // Здесь можно загрузить данные события для редактирования
     document.getElementById('scheduleModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
 }
 
 function closeScheduleModal() {
@@ -22,11 +23,28 @@ function closeScheduleModal() {
     document.getElementById('scheduleForm').reset();
 }
 
-function editSchedule(scheduleId) {
-    // Здесь можно добавить логику для загрузки данных события в форму
-    // Пока просто открываем модальное окно
-    openScheduleModal();
-    return false; // Предотвращаем отправку формы
+// Сохранение события
+function saveSchedule() {
+    const form = document.getElementById('scheduleForm');
+    const formData = new FormData(form);
+    
+    const url = currentScheduleId ? `/schedule/${currentScheduleId}/edit` : '/schedule/create';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            throw new Error('Ошибка при сохранении');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showFlashMessage('Ошибка при сохранении события', 'error');
+    });
 }
 
 // Закрытие модального окна при клике вне его
@@ -187,52 +205,138 @@ function displayScheduleData(data) {
     scheduleContent.innerHTML = html;
 }
 
+// Функции для работы с колледжами
+let currentCollegeId = null;
+
+function openCollegeModal() {
+    document.getElementById('collegeModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCollegeModal() {
+    document.getElementById('collegeModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('collegeForm').reset();
+    currentCollegeId = null;
+}
+
+function createCollege() {
+    currentCollegeId = null;
+    document.getElementById('collegeModalTitle').textContent = 'Добавить колледж';
+    document.getElementById('collegeForm').reset();
+    openCollegeModal();
+}
+
+function editCollege(collegeId, name) {
+    currentCollegeId = collegeId;
+    document.getElementById('collegeModalTitle').textContent = 'Редактировать колледж';
+    document.getElementById('collegeName').value = name;
+    openCollegeModal();
+}
+
+function toggleCollegeVisibility(collegeId) {
+    fetch(`/api/colleges/${collegeId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            throw new Error('Ошибка при изменении статуса');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showFlashMessage('Ошибка при изменении статуса колледжа', 'error');
+    });
+}
+
+// Обработка отправки формы колледжа
+document.addEventListener('DOMContentLoaded', function() {
+    const collegeForm = document.getElementById('collegeForm');
+    if (collegeForm) {
+        collegeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const url = currentCollegeId ? `/colleges/${currentCollegeId}/edit` : '/colleges/create';
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    return response.text().then(text => {
+                        throw new Error('Ошибка при сохранении');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFlashMessage(error.message, 'error');
+            });
+        });
+    }
+
+    // Обработчики для изображений в форме колледжа
+    const collegeImageInput = document.getElementById('collegeImage');
+    const collegeImagePreview = document.getElementById('collegeImagePreview');
+    const removeCollegeImageBtn = document.getElementById('removeCollegeImageBtn');
+
+    if (collegeImageInput) {
+        collegeImageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    collegeImagePreview.src = e.target.result;
+                    collegeImagePreview.style.display = 'block';
+                    removeCollegeImageBtn.style.display = 'inline-block';
+                    // Скрываем кнопку "Выбрать файл"
+                    collegeImageInput.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (removeCollegeImageBtn) {
+        removeCollegeImageBtn.addEventListener('click', function() {
+            collegeImageInput.value = '';
+            collegeImagePreview.style.display = 'none';
+            this.style.display = 'none';
+            // Показываем кнопку "Выбрать файл"
+            collegeImageInput.style.display = 'block';
+        });
+    }
+
+    // Обработчик для кнопки добавления колледжа
+    const addCollegeBtn = document.getElementById('addCollegeBtn');
+    if (addCollegeBtn) {
+        addCollegeBtn.addEventListener('click', createCollege);
+    }
+
+    // Закрытие модального окна колледжа при клике вне его
+    const collegeModal = document.getElementById('collegeModal');
+    if (collegeModal) {
+        collegeModal.addEventListener('click', function(event) {
+            if (event.target === collegeModal) {
+                closeCollegeModal();
+            }
+        });
+    }
+});
+
 // Автоматически открываем первый колледж при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     const firstCollegeBtn = document.querySelector('.college-btn');
     if (firstCollegeBtn) {
         firstCollegeBtn.click();
     }
-});
-
-// Обработка отправки формы
-document.getElementById('scheduleForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = {
-        title: document.getElementById('title').value.trim(),
-        date: document.getElementById('date').value,
-        time: document.getElementById('time').value || null,
-        location: document.getElementById('location').value.trim() || null,
-        description: document.getElementById('description').value.trim() || null
-    };
-    
-    if (!formData.title || !formData.date) {
-        showFlashMessage('Заполните обязательные поля', 'error');
-        return;
-    }
-    
-    const url = currentScheduleId ? `/schedule/${currentScheduleId}/edit` : '/schedule/create';
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-    })
-    .then(response => {
-        if (response.ok) {
-            closeScheduleModal();
-            location.reload();
-        } else {
-            return response.json().then(data => {
-                throw new Error(data.message || 'Ошибка при сохранении события');
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showFlashMessage(error.message, 'error');
-    });
 }); 

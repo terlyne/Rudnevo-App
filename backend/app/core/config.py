@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Настройки базы данных
     POSTGRES_SERVER: str
+    POSTGRES_PORT: int = 5432
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
@@ -34,6 +35,7 @@ class Settings(BaseSettings):
             username=values.get("POSTGRES_USER"),
             password=values.get("POSTGRES_PASSWORD"),
             host=values.get("POSTGRES_SERVER"),
+            port=values.get("POSTGRES_PORT"),
             path=values.get("POSTGRES_DB") or "",
         )
 

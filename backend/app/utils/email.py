@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 
-from app.core.config import settings
+from core.config import settings
 
 
 conf = ConnectionConfig(

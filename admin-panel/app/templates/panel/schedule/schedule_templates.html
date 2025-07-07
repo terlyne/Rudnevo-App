@@ -8,12 +8,6 @@
         <h1>Шаблоны расписаний</h1>
         <p>Управление шаблонами расписаний для различных колледжей</p>
     </div>
-    <div class="content-header-right">
-        <a href="{{ url_for('panel.upload_schedule_template') }}" class="btn btn-primary">
-            <i class="fas fa-upload"></i>
-            Загрузить Excel файл
-        </a>
-    </div>
 </div>
 
 <div class="content-body">
@@ -55,11 +49,7 @@
                 <i class="fas fa-calendar-alt"></i>
             </div>
             <h3>Шаблоны расписаний не найдены</h3>
-            <p>Загрузите Excel файл с расписаниями, чтобы создать шаблоны</p>
-            <a href="{{ url_for('panel.upload_schedule_template') }}" class="btn btn-primary">
-                <i class="fas fa-upload"></i>
-                Загрузить файл
-            </a>
+            <p>Расписания будут созданы автоматически при загрузке Excel файлов</p>
         </div>
     {% endif %}
 </div>
@@ -75,94 +65,120 @@
     }
 
     .schedule-template-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        border: 1px solid #e1e5e9;
-        transition: all 0.3s ease;
-    }
-
-    .schedule-template-card:hover {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
     }
 
     .template-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e1e5e9;
+        margin-bottom: 16px;
     }
 
     .template-header h3 {
         margin: 0;
+        font-size: 18px;
+        font-weight: 600;
         color: #2c3e50;
-        font-size: 1.2rem;
     }
 
     .template-status {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
         font-weight: 500;
+        text-transform: uppercase;
     }
 
     .template-status.active {
-        background-color: #d4edda;
+        background: #d4edda;
         color: #155724;
     }
 
     .template-status.inactive {
-        background-color: #f8d7da;
+        background: #f8d7da;
         color: #721c24;
     }
 
     .template-info {
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
 
     .template-info p {
-        margin: 5px 0;
+        margin: 8px 0;
         color: #6c757d;
-        font-size: 0.9rem;
+        font-size: 14px;
+    }
+
+    .template-info strong {
+        color: #2c3e50;
     }
 
     .template-actions {
         display: flex;
-        gap: 10px;
-        justify-content: flex-end;
+        gap: 12px;
     }
 
     .template-actions .btn {
-        padding: 8px 12px;
-        font-size: 0.9rem;
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .template-actions .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .template-actions .btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+    }
+
+    .template-actions .btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+
+    .template-actions .btn-danger:hover {
+        background: #c82333;
+        transform: translateY(-1px);
     }
 
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 80px 20px;
     }
 
     .empty-state-icon {
-        font-size: 4rem;
+        font-size: 64px;
         color: #6c757d;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+        opacity: 0.5;
     }
 
     .empty-state h3 {
+        margin: 0 0 16px 0;
+        font-size: 24px;
         color: #2c3e50;
-        margin-bottom: 10px;
     }
 
     .empty-state p {
+        margin: 0;
         color: #6c757d;
-        margin-bottom: 30px;
+        font-size: 16px;
+        line-height: 1.5;
     }
 
     @media (max-width: 768px) {
@@ -173,7 +189,7 @@
         .template-header {
             flex-direction: column;
             align-items: flex-start;
-            gap: 10px;
+            gap: 12px;
         }
 
         .template-actions {

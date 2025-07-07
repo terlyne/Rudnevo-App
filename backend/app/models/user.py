@@ -2,8 +2,8 @@ from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import func
 
-from app.models.base import Base
-from app.db.custom_types import str_uniq
+from models.base import Base
+from db.custom_types import str_uniq
 
 
 class User(Base):

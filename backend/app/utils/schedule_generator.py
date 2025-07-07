@@ -180,49 +180,109 @@ class ScheduleTemplateGenerator:
 schedule_generator = ScheduleTemplateGenerator() 
 
 
-def process_excel_schedule(file_path: str) -> List[Dict[str, Any]]:
+async def process_excel_schedule(file_path: str, db_session=None) -> List[Dict[str, Any]]:
     """
     Обрабатывает Excel файл с расписаниями и возвращает список JSON данных
-    для каждого колледжа
+    для каждого колледжа. Более гибкая обработка - использует первый лист.
     """
     try:
-        # Читаем Excel файл
-        excel_file = pd.ExcelFile(file_path)
-        results = []
-        
-        for sheet_name in excel_file.sheet_names:
+        # Читаем Excel файл через контекстный менеджер
+        with pd.ExcelFile(file_path) as excel_file:
+            results = []
+            # Получаем список активных колледжей из базы данных
+            available_colleges = set()
+            colleges_by_name = dict()
+            if db_session:
+                try:
+                    from crud import college as college_crud
+                    colleges = await college_crud.get_colleges_list(db_session)
+                    available_colleges = {college.name for college in colleges}
+                    colleges_by_name = {college.name: college.id for college in colleges}
+                except Exception as e:
+                    print(f"Ошибка при получении списка колледжей: {str(e)}")
+
+            print(f"=== DEBUG: Обработка Excel файла ===")
+            print(f"Доступные колледжи в БД: {available_colleges}")
+            print(f"Листы в Excel файле: {excel_file.sheet_names}")
+
+            # Используем только первый лист для гибкости
+            if not excel_file.sheet_names:
+                raise Exception("Excel файл не содержит листов")
+
+            sheet_name = excel_file.sheet_names[0]
+            print(f"\n--- Обрабатываем первый лист: '{sheet_name}' ---")
+
             try:
-                # Читаем данные из листа
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
-                
+                # Читаем данные из листа через ExcelFile
+                df = pd.read_excel(excel_file, sheet_name=sheet_name)
+
                 # Обрабатываем данные и создаем JSON структуру
                 schedule_data = process_sheet_data(df, sheet_name)
-                
+
                 if schedule_data:
+                    print(f"Успешно созданы данные для листа '{sheet_name}'")
+
+                    # Используем название листа как название колледжа
+                    college_name = sheet_name
+                    print(f"Используем название листа как название колледжа: '{college_name}'")
+
+                    # Проверяем, есть ли такой колледж в БД
+                    college_id = None
+                    if available_colleges and college_name in available_colleges:
+                        college_id = colleges_by_name.get(college_name)
+                    else:
+                        print(f"ВНИМАНИЕ: Колледж '{college_name}' не найден в базе данных!")
+                        print(f"Доступные колледжи: {available_colleges}")
+                        # Используем первый доступный колледж
+                        if available_colleges:
+                            college_name = list(available_colleges)[0]
+                            college_id = colleges_by_name.get(college_name)
+                            print(f"Используем первый доступный колледж: '{college_name}' (id={college_id})")
+                        else:
+                            print(f"ВНИМАНИЕ: Нет колледжей в базе данных!")
+                            # Создаем временное название
+                            college_name = f"Колледж_{sheet_name}"
+                            college_id = None
+                            print(f"Создаем временное название: '{college_name}' (id=None)")
+
                     results.append({
-                        "college_name": sheet_name,
+                        "college_id": college_id,
+                        "college_name": college_name,
                         "schedule_data": schedule_data
                     })
-                    
+                else:
+                    print(f"Не удалось создать данные для листа '{sheet_name}' - пустой результат")
+
             except Exception as e:
                 print(f"Ошибка при обработке листа '{sheet_name}': {str(e)}")
-                continue
-        
-        return results
-        
+                raise
+
+            print(f"=== ИТОГОВЫЙ РЕЗУЛЬТАТ ===")
+            print(f"Обработано колледжей: {len(results)}")
+            for result in results:
+                print(f"  - {result['college_name']} (id={result['college_id']}): {len(result['schedule_data']['schedule'])} записей")
+
+            return results
     except Exception as e:
-        raise Exception(f"Ошибка при обработке Excel файла: {str(e)}")
+        print(f"Ошибка при обработке Excel файла: {str(e)}")
+        raise
 
 
 def process_sheet_data(df: pd.DataFrame, sheet_name: str) -> Dict[str, Any]:
     """
     Обрабатывает данные из листа Excel и создает структурированный JSON
     """
+    print(f"  Обрабатываем данные для листа '{sheet_name}'")
+    print(f"  Исходный DataFrame: {df.shape[0]} строк, {df.shape[1]} колонок")
+    print(f"  Заголовки: {df.columns.tolist()}")
+    
     # Очищаем DataFrame
     df = df.dropna(how='all').dropna(axis=1, how='all')
+    print(f"  После очистки: {df.shape[0]} строк, {df.shape[1]} колонок")
     
     # Если DataFrame пустой, возвращаем None
     if df.empty:
+        print(f"  DataFrame пустой после очистки")
         return None
     
     # Определяем структуру расписания
@@ -240,6 +300,7 @@ def process_sheet_data(df: pd.DataFrame, sheet_name: str) -> Dict[str, Any]:
         # Простая структура - все данные в одной колонке
         schedule_structure["schedule"] = process_simple_schedule(df)
     
+    print(f"  Создана структура с {len(schedule_structure['schedule'])} записями")
     return schedule_structure
 
 
@@ -254,10 +315,10 @@ def process_standard_schedule(df: pd.DataFrame) -> List[Dict[str, Any]]:
     headers = df.columns.tolist()
     
     # Отладочная информация
-    print(f"=== DEBUG: process_standard_schedule ===")
-    print(f"Заголовки колонок: {headers}")
-    print(f"Количество строк: {len(df)}")
-    print(f"Первые 3 строки:")
+    print(f"    === DEBUG: process_standard_schedule ===")
+    print(f"    Заголовки колонок: {headers}")
+    print(f"    Количество строк: {len(df)}")
+    print(f"    Первые 3 строки:")
     print(df.head(3))
     
     # Обрабатываем каждую строку
@@ -313,7 +374,7 @@ def process_standard_schedule(df: pd.DataFrame) -> List[Dict[str, Any]]:
             schedule_entries.append(entry)
             print(f"Создана запись: {entry}")
     
-    print(f"Всего создано записей: {len(schedule_entries)}")
+    print(f"    Всего создано записей: {len(schedule_entries)}")
     return schedule_entries
 
 

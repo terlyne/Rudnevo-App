@@ -1,0 +1,140 @@
+{% extends "panel/base.html" %}
+
+{% block title %}
+Руднево - Колледжи
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/colleges/colleges_list.css') }}">
+<style>
+    .btn-remove-image {
+        background: #f44336;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-size: 15px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.2s;
+        display: inline-block;
+    }
+
+    .btn-remove-image:hover {
+        background: #c62828;
+    }
+</style>
+{% endblock %}
+
+{% block container %}
+<div class="colleges-container">
+    <div class="colleges-header">
+        <div class="header-content">
+            <h1>Колледжи</h1>
+        </div>
+        <div class="colleges-actions">
+            <button class="btn-create" onclick="createCollege()">
+                <span class="btn-icon">+</span>
+                Создать колледж
+            </button>
+        </div>
+    </div>
+
+    <div class="colleges-list">
+        {% if colleges %}
+            {% for college in colleges %}
+            <div class="college-card" data-id="{{ college.id }}">
+                <div class="college-image">
+                    {% if college.image_url %}
+                        <img src="{{ url_for('panel.college_image', college_id=college.id) }}" alt="{{ college.name }}">
+                    {% else %}
+                        <div class="no-image">
+                            <span>🏫</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="college-content">
+                    <div class="college-header-info">
+                        <h3 class="college-name">{{ college.name }}</h3>
+                    </div>
+                    <div class="college-meta">
+                        <span class="college-date">Создан: {{ college.created_at }}</span>
+                    </div>
+                    <div class="college-actions">
+                        <button class="btn-edit" onclick="editCollege({{ college.id }}, '{{ college.name|replace("'", "\\'") }}')">
+                            ✏️ Редактировать
+                        </button>
+                        <button class="btn-toggle" onclick="toggleCollegeVisibility({{ college.id }})">
+                            {% if college.is_active %}👁️ Скрыть{% else %}👁️ Показать{% endif %}
+                        </button>
+                        <button class="btn-delete" onclick="deleteCollege({{ college.id }}, '{{ college.name|replace("'", "\\'") }}')">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-colleges">
+                <div class="no-colleges-icon">🏫</div>
+                <div class="no-colleges-text">Колледжи не найдены</div>
+                <div class="no-colleges-subtext">Добавьте первый колледж</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для создания/редактирования колледжа -->
+<div id="collegeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Создать колледж</h2>
+            <span class="close" onclick="closeCollegeModal()">&times;</span>
+        </div>
+        <form id="collegeForm" method="POST" action="{{ url_for('panel.college_create') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <div class="form-group">
+                <label for="name">Название колледжа *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Изображение колледжа *</label>
+                <div id="imageBlock">
+                    <img id="imagePreview" src="" alt="Превью изображения"
+                        style="display:none;max-width:100%;margin-top:10px;" />
+                    <button type="button" id="removeImageBtn" style="display:none;margin-top:10px;"
+                        class="btn-remove-image">Удалить изображение</button>
+                    <input type="file" id="image" name="image" accept="image/*" required />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeCollegeModal()">Отмена</button>
+                <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно для подтверждения удаления -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Подтверждение удаления</h2>
+            <span class="close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Вы уверены, что хотите удалить колледж "<span id="deleteCollegeName"></span>"? Это действие нельзя отменить.</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Отмена</button>
+                <button class="btn-delete" onclick="confirmDelete()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/colleges/colleges_list.js') }}"></script>
+{% endblock %} 

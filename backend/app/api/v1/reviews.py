@@ -2,37 +2,69 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from app.api.deps import get_current_admin_or_superuser
-from app.crud import review as review_crud
-from app.db.session import get_async_session
-from app.models.user import User
-from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewInDB
+from api.deps import get_current_admin_or_superuser, get_current_user_optional
+from crud import review as review_crud
+from db.session import get_async_session
+from models.user import User
+from schemas.review import ReviewCreate, ReviewUpdate, ReviewInDB
 
-router = APIRouter()
+# Публичный роутер для открытых эндпоинтов
+public_router = APIRouter()
+
+# Административный роутер для закрытых эндпоинтов
+admin_router = APIRouter()
 
 
-@router.get("/", response_model=list[ReviewInDB])
-async def read_reviews(
+# === ПУБЛИЧНЫЕ ЭНДПОИНТЫ ===
+
+@public_router.get("/", response_model=list[ReviewInDB])
+async def read_public_reviews(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """Получить список публичных отзывов (открытый эндпоинт)"""
+    return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=False)
+
+
+@public_router.get("/{review_id}", response_model=ReviewInDB)
+async def read_public_review(
+    review_id: int, db: AsyncSession = Depends(get_async_session)
+):
+    """Получить публичный отзыв по ID"""
+    review = await review_crud.get_review(db=db, review_id=review_id)
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Отзыв не найден."
+        )
+    if review.is_hidden:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Отзыв не найден."
+        )
+    return review
+
+
+# === АДМИНИСТРАТИВНЫЕ ЭНДПОИНТЫ ===
+
+@admin_router.get("/", response_model=list[ReviewInDB])
+async def read_all_reviews(
     skip: int = 0,
     limit: int = 100,
     show_hidden: bool = False,
     db: AsyncSession = Depends(get_async_session),
-    current_user: Optional[User] = Depends(get_current_admin_or_superuser),
+    current_user: User = Depends(get_current_admin_or_superuser),
 ):
-    """Получить список отзывов (открытый эндпоинт, скрытые — только для админов)"""
-    if show_hidden:
-        if not current_user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-        return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=True)
-    # Публичные отзывы доступны всем
-    return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=False)
+    """Получить список всех отзывов (включая скрытые) - только для администраторов"""
+    return await review_crud.get_reviews(db, skip=skip, limit=limit, show_hidden=show_hidden)
 
 
-@router.get("/{review_id}", response_model=ReviewInDB)
-async def read_review(
-    review_id: int, db: AsyncSession = Depends(get_async_session)
+@admin_router.get("/{review_id}", response_model=ReviewInDB)
+async def read_review_admin(
+    review_id: int, 
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_admin_or_superuser)
 ):
-    """Получить отзыв по ID"""
+    """Получить отзыв по ID (включая скрытые) - только для администраторов"""
     review = await review_crud.get_review(db=db, review_id=review_id)
     if not review:
         raise HTTPException(
@@ -41,15 +73,15 @@ async def read_review(
     return review
 
 
-@router.post("/", response_model=ReviewInDB)
+@admin_router.post("/", response_model=ReviewInDB)
 async def create_review(
     *, db: AsyncSession = Depends(get_async_session), review_in: ReviewCreate, current_user: User = Depends(get_current_admin_or_superuser)
 ):
-    """Создать отзыв"""
+    """Создать отзыв (только для администраторов)"""
     return await review_crud.create_review(db=db, review_in=review_in)
 
 
-@router.put("/{review_id}", response_model=ReviewInDB)
+@admin_router.put("/{review_id}", response_model=ReviewInDB)
 async def update_review(
     review_id: int,
     *,
@@ -61,7 +93,7 @@ async def update_review(
     return await review_crud.update_review(db=db, review_id=review_id, review_in=review_in)
 
 
-@router.delete("/{review_id}")
+@admin_router.delete("/{review_id}")
 async def delete_review(
     review_id: int,
     db: AsyncSession = Depends(get_async_session),

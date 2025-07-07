@@ -128,11 +128,11 @@
     accent-color: #636363;
 }
 
-.filter-checkbox input[type="checkbox"]:checked + .checkmark {
+.filter-checkbox input[type="checkbox"]:checked+.checkmark {
     display: none;
 }
 
-.filter-checkbox input[type="checkbox"]:checked + .checkmark::after {
+.filter-checkbox input[type="checkbox"]:checked+.checkmark::after {
     display: none;
 }
 
@@ -256,7 +256,9 @@
     gap: 8px;
 }
 
-.btn-edit, .btn-toggle, .btn-delete {
+.btn-edit,
+.btn-toggle,
+.btn-delete {
     border: none;
     border-radius: 8px;
     padding: 8px 12px;
@@ -371,10 +373,10 @@
     color: #2c3e50;
 }
 
-/* Форма */
 #newsForm {
     padding: 24px;
 }
+
 
 .form-group {
     margin-bottom: 20px;
@@ -471,7 +473,8 @@
     margin-top: 24px;
 }
 
-.btn-cancel, .btn-save {
+.btn-cancel,
+.btn-save {
     padding: 12px 24px;
     border: none;
     border-radius: 12px;
@@ -504,47 +507,47 @@
     .news-container {
         padding: 16px;
     }
-    
+
     .news-header {
         flex-direction: column;
         gap: 16px;
         align-items: stretch;
     }
-    
+
     .header-content {
         text-align: center;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-    
+
     .news-card {
         flex-direction: column;
         gap: 16px;
     }
-    
+
     .news-image {
         width: 100%;
         height: 200px;
     }
-    
+
     .news-header-info {
         flex-direction: column;
         gap: 8px;
     }
-    
+
     .news-meta {
         flex-direction: column;
         gap: 12px;
         align-items: flex-start;
     }
-    
+
     .news-actions {
         flex-wrap: wrap;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;

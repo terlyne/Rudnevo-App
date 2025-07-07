@@ -7,15 +7,15 @@ from pathlib import Path
 from datetime import timedelta
 import uvicorn
 
-from app.core.config import settings
-from app.api.v1 import api_router
-from app.db.session import engine, async_session_maker, get_async_session
-from app.models import Base
-from app.crud.user import get_user_by_email, create_user
-from app.schemas.user import UserCreate
-from app.core.security import create_registration_token
-from app.utils.email import send_registration_email
-from app.utils.task_scheduler import run_periodic_task, actions_weekly_cleanup
+from core.config import settings
+from api.v1 import api_router
+from db.session import engine, async_session_maker, get_async_session
+from models import Base
+from crud.user import get_user_by_email, create_user
+from schemas.user import UserCreate
+from core.security import create_registration_token
+from utils.email import send_registration_email
+from utils.task_scheduler import run_periodic_task, actions_weekly_cleanup
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
     media_root = Path(settings.MEDIA_ROOT)
     (media_root / "news").mkdir(parents=True, exist_ok=True)
     (media_root / "resumes").mkdir(parents=True, exist_ok=True)
+    (media_root / "colleges").mkdir(parents=True, exist_ok=True)
 
     # Создаем начального пользователя только с email
     async with async_session_maker() as session:
@@ -78,8 +79,6 @@ app = FastAPI(
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
-    docs_url=None, 
-    redoc_url=None,
 )
 
 # Настраиваем CORS
@@ -99,4 +98,4 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0")
+    uvicorn.run("run:app", host="0.0.0.0", reload=True)

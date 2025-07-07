@@ -7,6 +7,16 @@ function createNews() {
     document.getElementById('newsForm').reset();
     currentNewsId = null;
     document.getElementById('newsForm').setAttribute('action', '/news/create');
+    
+    // Сбрасываем состояние изображения
+    const imageInput = document.getElementById('image');
+    const preview = document.getElementById('imagePreview');
+    const removeBtn = document.getElementById('removeImageBtn');
+    
+    imageInput.style.display = 'block';
+    preview.style.display = 'none';
+    removeBtn.style.display = 'none';
+    
     openNewsModal();
 }
 
@@ -54,6 +64,31 @@ function editNews(newsId) {
         });
     return false;
 }
+
+// Обработчик для изображения при выборе файла
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    const removeBtn = document.getElementById('removeImageBtn');
+                    
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    removeBtn.style.display = 'inline-block';
+                    
+                    // Скрываем кнопку "Выбрать файл"
+                    imageInput.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
 
 // Кнопка удаления изображения
 if (document.getElementById('removeImageBtn')) {

@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.news import News
-from app.schemas.news import NewsCreate, NewsUpdate
+from models.news import News
+from schemas.news import NewsCreate, NewsUpdate
 
 
 async def get_news_list(

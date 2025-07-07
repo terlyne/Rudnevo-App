@@ -7,18 +7,37 @@
 {% block styles %}
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/panel/schedule/schedule_list.css') }}">
+<style>
+    .btn-remove-image {
+        background: #f44336;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-size: 15px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.2s;
+        display: inline-block;
+    }
+
+    .btn-remove-image:hover {
+        background: #c62828;
+    }
+</style>
 {% endblock %}
 
 {% block container %}
+<meta name="csrf-token" content="{{ csrf_token }}">
 <div class="schedule-container">
     <div class="schedule-header">
         <div class="header-content">
             <h1>Расписание</h1>
         </div>
         <div class="schedule-actions">
-            <button id="uploadBtn" class="btn btn-primary" style="display: none;">
-                <span class="btn-icon">+</span>
-                Загрузить Excel файл
+            <button id="addCollegeBtn" class="btn btn-secondary">
+                <span class="btn-icon">🏫</span>
+                Добавить колледж
             </button>
             <button id="deleteBtn" class="btn btn-danger" style="display: none;">
                 <span class="btn-icon">🗑️</span>
@@ -27,36 +46,92 @@
         </div>
     </div>
 
-    <div id="scheduleContent">
-        {% if has_schedules %}
-            <div class="colleges-list">
-                {% for template in templates %}
-                <div class="college-item" data-college="{{ template.college_name }}" data-id="{{ template.id }}">
-                    <span class="college-name">{{ template.college_name }}</span>
+    <div class="schedule-content">
+        <div class="colleges-list">
+            {% for college in colleges %}
+            <div class="college-item" data-id="{{ college.template_id if college.has_schedule else '' }}" data-college="{{ college.name }}" data-has-schedule="{{ 'true' if college.has_schedule else 'false' }}">
+                <div class="college-image">
+                    {% if college.image_url %}
+                        <img src="{{ url_for('panel.college_image', college_id=college.id) }}" alt="{{ college.name }}" class="college-logo">
+                    {% else %}
+                        <span class="college-emoji">🏫</span>
+                    {% endif %}
                 </div>
-                {% endfor %}
-            </div>
-            <div class="schedule-display-area" id="scheduleDisplayArea">
-                {{ schedule_html|safe }}
-            </div>
-            
-            <!-- Скрытые блоки с HTML для каждого колледжа -->
-            {% for template in templates %}
-            <div class="college-schedule-html" data-college="{{ template.college_name }}" style="display: none;">
-                {% if template.html_content %}
-                    {{ template.html_content|safe }}
-                {% else %}
-                    <div class="error">Расписание для {{ template.college_name }} не найдено</div>
-                {% endif %}
+                <h3 class="college-name">{{ college.name }}</h3>
+                <p class="schedule-status">
+                    {% if college.has_schedule %}
+                        Есть расписание
+                    {% else %}
+                        Нет расписания
+                    {% endif %}
+                </p>
+                <div class="college-actions">
+                    {% if not college.has_schedule %}
+                    <button class="btn-action upload-schedule-btn" data-college-id="{{ college.id }}" data-college-name="{{ college.name }}" title="Добавить расписание для колледжа">📤</button>
+                    {% endif %}
+                    
+                    <!-- Форма для удаления колледжа -->
+                    <form method="POST" action="{{ url_for('panel.college_delete', college_id=college.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <button type="submit" class="btn-action" onclick="return confirm('Вы уверены, что хотите удалить колледж &quot;{{ college.name }}&quot;? Это действие нельзя отменить.')" title="Удалить колледж">🗑️</button>
+                    </form>
+                    
+                    {% if college.has_schedule and college.template_id %}
+                    <!-- Форма для удаления расписания -->
+                    <form method="POST" action="{{ url_for('panel.delete_schedule_template', template_id=college.template_id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <button type="submit" class="btn-action delete-schedule-btn" onclick="return confirm('Вы уверены, что хотите удалить расписание для колледжа &quot;{{ college.name }}&quot;? Это действие нельзя отменить.')" title="Удалить расписание">❌</button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
-        {% else %}
-            <div class="no-schedules">
-                <div class="no-schedules-icon">📊</div>
-                <div class="no-schedules-text">Расписание не найдено</div>
-                <div class="no-schedules-subtext">Загрузите Excel файл с расписаниями</div>
+        </div>
+
+        <div class="schedule-display">
+            <div class="display-header">
+                <h2>Расписание</h2>
+                <p class="display-subtitle">Выберите колледж для просмотра расписания</p>
             </div>
-        {% endif %}
+            <div class="display-content" id="scheduleDisplay">
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <h3>Расписание не выбрано</h3>
+                    <p>Выберите колледж из списка выше для просмотра расписания</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления колледжа -->
+<div id="collegeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Добавить колледж</h2>
+            <span class="close" onclick="closeCollegeModal()">&times;</span>
+        </div>
+        <form id="collegeForm" method="POST" action="{{ url_for('panel.college_create') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <div class="form-group">
+                <label for="collegeName">Название колледжа *</label>
+                <input type="text" id="collegeName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="collegeImage">Изображение колледжа *</label>
+                <div id="imageBlock">
+                    <img id="imagePreview" src="" alt="Превью изображения"
+                        style="display:none;max-width:100%;margin-top:10px;" />
+                    <button type="button" id="removeImageBtn" style="display:none;margin-top:10px;"
+                        class="btn-remove-image">Удалить изображение</button>
+                    <input type="file" id="collegeImage" name="image" accept="image/*" required />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeCollegeModal()">Отмена</button>
+                <button type="submit" class="btn-save">Добавить</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -68,11 +143,11 @@
             <span class="close" onclick="closeDeleteModal()">&times;</span>
         </div>
         <div class="modal-body">
-            <p>Вы уверены, что хотите удалить расписание? Это действие нельзя отменить.</p>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
-                <button class="btn btn-danger" onclick="confirmDeleteAll()">Удалить все</button>
-            </div>
+            <p>Вы уверены, что хотите удалить все расписания? Это действие нельзя отменить.</p>
+        </div>
+        <div class="form-actions">
+            <button class="btn-cancel" onclick="closeDeleteModal()">Отмена</button>
+            <button class="btn-delete" onclick="confirmDeleteAll()">Удалить все</button>
         </div>
     </div>
 </div>
@@ -99,14 +174,59 @@
         // Показываем/скрываем кнопки в зависимости от наличия расписаний
         updateButtonVisibility();
         
-        // Обработчик для кнопки загрузки
-        const uploadBtn = document.getElementById('uploadBtn');
-        if (uploadBtn) {
-            uploadBtn.addEventListener('click', function () {
-                window.location.href = '{{ url_for("panel.upload_schedule_template") }}';
+        // Обработчик для кнопки добавления колледжа
+        const addCollegeBtn = document.getElementById('addCollegeBtn');
+        if (addCollegeBtn) {
+            addCollegeBtn.addEventListener('click', function () {
+                openCollegeModal();
             });
         }
-
+        
+        // Обработчик для изображения при выборе файла в форме колледжа
+        const collegeImageInput = document.getElementById('collegeImage');
+        if (collegeImageInput) {
+            collegeImageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('imagePreview');
+                        const removeBtn = document.getElementById('removeImageBtn');
+                        
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                        removeBtn.style.display = 'inline-block';
+                        
+                        // Скрываем кнопку "Выбрать файл"
+                        collegeImageInput.style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // Кнопка удаления изображения в форме колледжа
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        if (removeImageBtn) {
+            removeImageBtn.onclick = function() {
+                const imageInput = document.getElementById('collegeImage');
+                imageInput.value = '';
+                this.style.display = 'none';
+                document.getElementById('imagePreview').style.display = 'none';
+                imageInput.style.display = 'block';
+                // Добавляем скрытое поле для передачи remove_image
+                let removeField = document.getElementById('remove_image');
+                if (!removeField) {
+                    removeField = document.createElement('input');
+                    removeField.type = 'hidden';
+                    removeField.name = 'remove_image';
+                    removeField.id = 'remove_image';
+                    document.getElementById('collegeForm').appendChild(removeField);
+                }
+                removeField.value = 'true';
+            }
+        }
+        
         // Обработчик для кнопки удаления
         const deleteBtn = document.getElementById('deleteBtn');
         if (deleteBtn) {
@@ -121,9 +241,23 @@
 
         // Обработчики для колледжей
         document.querySelectorAll('.college-item').forEach(item => {
-            item.addEventListener('click', function () {
+            item.addEventListener('click', function (event) {
+                // Не срабатываем при клике на кнопки управления
+                if (event.target.closest('.college-actions')) {
+                    return;
+                }
                 const collegeName = this.getAttribute('data-college');
                 showSchedule(collegeName, this);
+            });
+        });
+
+        // Обработчики для кнопок загрузки расписания
+        document.querySelectorAll('.upload-schedule-btn').forEach(btn => {
+            btn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const collegeId = this.getAttribute('data-college-id');
+                const collegeName = this.getAttribute('data-college-name');
+                uploadSchedule(collegeId, collegeName);
             });
         });
 
@@ -134,60 +268,125 @@
         }
     });
 
+    // Функции для работы с модальными окнами
+    function openCollegeModal() {
+        const modal = document.getElementById('collegeModal');
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeCollegeModal() {
+        const modal = document.getElementById('collegeModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            // Очищаем форму
+            const form = document.getElementById('collegeForm');
+            if (form) {
+                form.reset();
+            }
+            // Сбрасываем состояние изображения
+            const imageInput = document.getElementById('collegeImage');
+            const preview = document.getElementById('imagePreview');
+            const removeBtn = document.getElementById('removeImageBtn');
+            
+            if (imageInput) imageInput.style.display = 'block';
+            if (preview) preview.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'none';
+        }
+    }
+
+    // Закрытие модального окна при клике вне его
+    window.onclick = function (event) {
+        const collegeModal = document.getElementById('collegeModal');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (event.target == collegeModal) {
+            closeCollegeModal();
+        }
+        if (event.target == deleteModal) {
+            closeDeleteModal();
+        }
+    }
+
+    // Закрытие модального окна при нажатии Escape
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeCollegeModal();
+            closeDeleteModal();
+        }
+    });
+
     function updateButtonVisibility() {
-        const hasSchedules = document.querySelectorAll('.college-item').length > 0;
-        const uploadBtn = document.getElementById('uploadBtn');
+        const hasColleges = document.querySelectorAll('.college-item').length > 0;
+        const hasSchedules = document.querySelectorAll('.college-item[data-has-schedule="true"]').length > 0;
         const deleteBtn = document.getElementById('deleteBtn');
         
-        if (hasSchedules) {
-            if (uploadBtn) uploadBtn.style.display = 'none';
-            if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+        if (hasColleges) {
+            if (deleteBtn) deleteBtn.style.display = hasSchedules ? 'inline-flex' : 'none';
         } else {
-            if (uploadBtn) uploadBtn.style.display = 'inline-flex';
             if (deleteBtn) deleteBtn.style.display = 'none';
         }
     }
 
     function showSchedule(collegeName, element) {
-        // Убираем активный класс со всех элементов
+        // Убираем активный класс у всех элементов
         document.querySelectorAll('.college-item').forEach(item => {
             item.classList.remove('active');
         });
-
-        // Добавляем активный класс к выбранному элементу
-        if (element) {
-            element.classList.add('active');
-        }
-
-        // Показываем загрузку
-        const displayArea = document.getElementById('scheduleDisplayArea');
-        displayArea.innerHTML = '<div class="loading">Загрузка расписания...</div>';
-
-        // Ищем локальный HTML блок для этого колледжа
-        const collegeHtmlBlock = document.querySelector(`.college-schedule-html[data-college="${collegeName}"]`);
         
-        if (collegeHtmlBlock) {
-            // Используем локальный HTML
-            displayArea.innerHTML = collegeHtmlBlock.innerHTML;
-            currentSchedule = collegeName;
-        } else {
-            // Fallback: загружаем через AJAX
-            fetch(`/api/schedule/templates/${encodeURIComponent(collegeName)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    return response.text();
-                })
-                .then(html => {
-                    displayArea.innerHTML = html;
-                    currentSchedule = collegeName;
-                })
-                .catch(error => {
-                    console.error('Error loading schedule:', error);
-                    displayArea.innerHTML = '<div class="error">Ошибка загрузки данных</div>';
-                });
+        // Добавляем активный класс к выбранному элементу
+        element.classList.add('active');
+        
+        const displayArea = document.getElementById('scheduleDisplay');
+        
+        // Проверяем, есть ли расписание для этого колледжа
+        const hasSchedule = element.getAttribute('data-has-schedule') === 'true';
+        
+        if (!hasSchedule) {
+            displayArea.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <h3>Расписание не загружено</h3>
+                    <p>Для колледжа "${collegeName}" расписание еще не загружено</p>
+                </div>
+            `;
+            currentSchedule = null;
+            return;
         }
+        
+        // Если расписание уже загружено и это тот же колледж, не загружаем повторно
+        if (currentSchedule === collegeName) {
+            return;
+        }
+        
+        // Показываем индикатор загрузки
+        displayArea.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Загрузка расписания...</p>
+            </div>
+        `;
+        
+        // Загружаем расписание через AJAX
+        const collegeId = element.getAttribute('data-id');
+        fetch(`/api/schedule/templates/${collegeId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                displayArea.innerHTML = html;
+                currentSchedule = collegeId;
+            })
+            .catch(error => {
+                console.error('Error loading schedule:', error);
+                displayArea.innerHTML = '<div class="error">Ошибка загрузки данных</div>';
+            });
     }
 
     function deleteAllSchedules() {
@@ -210,7 +409,7 @@
         
         // Получаем все ID шаблонов
         const templateIds = [];
-        document.querySelectorAll('.college-item').forEach(item => {
+        document.querySelectorAll('.college-item[data-has-schedule="true"]').forEach(item => {
             const id = item.getAttribute('data-id');
             if (id) {
                 templateIds.push(id);
@@ -265,7 +464,7 @@
             alert(`Ошибка при удалении расписаний: ${error.message}`);
             // Восстанавливаем модальное окно
             modalBody.innerHTML = `
-                <p>Вы уверены, что хотите удалить расписание? Это действие нельзя отменить.</p>
+                <p>Вы уверены, что хотите удалить все расписания? Это действие нельзя отменить.</p>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
                     <button class="btn btn-danger" onclick="confirmDeleteAll()">Удалить все</button>
@@ -274,12 +473,76 @@
         });
     }
 
-    // Закрытие модального окна при клике вне его
-    window.onclick = function (event) {
-        const modal = document.getElementById('deleteModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
+    function uploadSchedule(collegeId, collegeName) {
+        // Создаем временный input для файла
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.xlsx,.xls';
+        fileInput.style.display = 'none';
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Проверяем расширение файла
+            if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                alert('Поддерживаются только файлы Excel (.xlsx, .xls)');
+                return;
+            }
+            
+            // Создаем FormData и отправляем файл
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Получаем CSRF токен
+            const csrfTokenElement = document.querySelector('meta[name="csrf-token"]');
+            if (csrfTokenElement) {
+                formData.append('csrf_token', csrfTokenElement.getAttribute('content'));
+            }
+            
+            // Показываем индикатор загрузки
+            const displayArea = document.getElementById('scheduleDisplay');
+            displayArea.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Загрузка расписания для ${collegeName}...</p>
+                </div>
+            `;
+            
+            // Отправляем файл на сервер
+            fetch('/api/schedule/upload-excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Schedule uploaded successfully:', data);
+                // Перезагружаем страницу для отображения нового расписания
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error uploading schedule:', error);
+                displayArea.innerHTML = `
+                    <div class="error">
+                        <h3>Ошибка загрузки расписания</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                // Удаляем временный input
+                document.body.removeChild(fileInput);
+            });
+        });
+        
+        // Добавляем input в DOM и кликаем по нему
+        document.body.appendChild(fileInput);
+        fileInput.click();
     }
 </script>
 {% endblock %}

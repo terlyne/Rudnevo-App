@@ -1,11 +1,13 @@
-from app.crud import user
-from app.crud import news
-from app.crud import review
-from app.crud import feedback
-from app.crud import schedule
-from app.crud import action
-from app.crud import vacancy
-from app.crud import student
+from crud import user
+from crud import news
+from crud import review
+from crud import feedback
+from crud import schedule
+from crud import action
+from crud import vacancy
+from crud import student
+from crud import partner
+from crud import college
 
 __all__ = [
     "user",
@@ -16,4 +18,6 @@ __all__ = [
     "action",
     "vacancy",
     "student",
+    "partner",
+    "college",
 ]

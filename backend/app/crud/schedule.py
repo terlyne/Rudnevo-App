@@ -3,8 +3,8 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.schedule import Schedule, ScheduleTemplate
-from app.schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleTemplateCreate, ScheduleTemplateUpdate
+from models.schedule import Schedule, ScheduleTemplate
+from schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleTemplateCreate, ScheduleTemplateUpdate
 
 import logging
 
@@ -80,15 +80,17 @@ async def get_schedule_template(db: AsyncSession, template_id: int) -> ScheduleT
     return result.scalar_one_or_none()
 
 
-async def get_schedule_template_by_college_name(
-    db: AsyncSession, college_name: str
+async def get_schedule_template_by_college_id(
+    db: AsyncSession, college_id: int
 ) -> Optional[ScheduleTemplate]:
-    """Получить шаблон по названию колледжа (первый активный при наличии дубликатов)"""
+    """
+    Получить шаблон по college_id (первый активный при наличии дубликатов)
+    """
     result = await db.execute(
         select(ScheduleTemplate)
-        .where(ScheduleTemplate.college_name == college_name)
+        .where(ScheduleTemplate.college_id == college_id)
         .where(ScheduleTemplate.is_active == True)
-        .order_by(ScheduleTemplate.id.desc())  # Берем самый новый
+        .order_by(ScheduleTemplate.id.desc())
         .limit(1)
     )
     return result.scalar_one_or_none()
@@ -177,13 +179,12 @@ async def delete_schedule_template(db: AsyncSession, template_id: int) -> bool:
         raise
 
 
-async def deactivate_schedule_templates_by_college(
-    db: AsyncSession, college_name: str
+async def deactivate_schedule_templates_by_college_id(
+    db: AsyncSession, college_id: int
 ) -> None:
-    """Деактивировать все шаблоны для колледжа"""
     await db.execute(
         update(ScheduleTemplate)
-        .where(ScheduleTemplate.college_name == college_name)
+        .where(ScheduleTemplate.college_id == college_id)
         .values(is_active=False)
     )
     await db.commit()

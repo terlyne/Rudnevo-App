@@ -5,7 +5,7 @@ from flask import session
 from requests.exceptions import RequestException
 import logging
 
-from app.core.config import settings
+from core.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -384,11 +384,18 @@ class APIClient:
         except RequestException as e:
             raise APIError(f"Ошибка сети при получении списка событий: {str(e)}")
 
+    def _build_url(self, uri: str) -> str:
+        """Строит полный URL, избегая дублирования /api/v1"""
+        if settings.API_URL.endswith('/api/v1'):
+            return f"{settings.API_URL}{uri}"
+        else:
+            return f"{settings.API_URL}/api/v1{uri}"
+
     def get(self, uri: str, params: dict = None):
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1{uri}"
+        url = self._build_url(uri)
         try:
             response = self._make_authenticated_request("GET", url, params=params, timeout=self.timeout)
             if response.status_code != 200:
@@ -401,7 +408,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1{uri}/{id}"
+        url = self._build_url(f"{uri}/{id}")
         try:
             response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             if response.status_code != 200:
@@ -414,7 +421,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1{uri}"
+        url = self._build_url(uri)
         try:
             response = self._make_authenticated_request(
                 "POST", url, json=data, timeout=self.timeout
@@ -430,7 +437,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1{uri}"
+        url = self._build_url(uri)
         try:
             response = self._make_authenticated_request(
                 "PUT", url, json=data, timeout=self.timeout
@@ -446,7 +453,7 @@ class APIClient:
         if not self.access_token:
             raise AuthenticationError("Требуется аутентификация пользователя")
 
-        url = f"{settings.API_URL}/api/v1{uri}"
+        url = self._build_url(uri)
         try:
             response = self._make_authenticated_request("DELETE", url, timeout=self.timeout)
             if response.status_code != 200:
@@ -458,33 +465,32 @@ class APIClient:
     # Методы для работы с вакансиями
     def get_vacancies(self, show_hidden: bool = False):
         """Получить список вакансий"""
-        params = {}
         if show_hidden:
-            params["show_hidden"] = "true"
-        return self.get("/vacancies", params=params)
+            return self.get("/admin/vacancies", params={"show_hidden": "true"})
+        return self.get("/vacancies")
 
     def get_vacancy(self, vacancy_id: int):
         """Получить вакансию по ID"""
-        return self.get_by_id("/vacancies", vacancy_id)
+        return self.get_by_id("/admin/vacancies", vacancy_id)
 
     def create_vacancy(self, **data):
         """Создать вакансию"""
         logger.info(f"Creating vacancy with data: {data}")
-        result = self.post("/vacancies", **data)
+        result = self.post("/admin/vacancies", **data)
         logger.info(f"Vacancy creation successful: {result}")
         return result
 
     def update_vacancy(self, vacancy_id: int, **data):
         """Обновить вакансию"""
-        return self.put(f"/vacancies/{vacancy_id}", **data)
+        return self.put(f"/admin/vacancies/{vacancy_id}", **data)
 
     def delete_vacancy(self, vacancy_id: int):
         """Удалить вакансию"""
-        return self.delete(f"/vacancies/{vacancy_id}")
+        return self.delete(f"/admin/vacancies/{vacancy_id}")
 
     def get_vacancy_statistics(self, vacancy_id: int):
         """Получить статистику вакансии"""
-        return self.get(f"/vacancies/{vacancy_id}/statistics")
+        return self.get(f"/admin/vacancies/{vacancy_id}/statistics")
 
     # Методы для работы со студентами
     def get_students(self, vacancy_id: int = None, status: str = None):
@@ -521,7 +527,7 @@ class APIClient:
         """
         Скачать файл по uri (относительно base_url). Если dest_path указан — сохранить файл туда, иначе вернуть bytes.
         """
-        url = f"{settings.API_URL}/api/v1{uri}"
+        url = self._build_url(uri)
         try:
             response = self._make_authenticated_request("GET", url, timeout=self.timeout, stream=True)
             if response.status_code != 200:
@@ -540,7 +546,7 @@ class APIClient:
 
     def change_password(self, current_password: str, new_password: str) -> dict[str, any]:
         """Смена пароля"""
-        url = f"{settings.API_URL}/api/v1/password/change"
+        url = self._build_url("/password/change")
         data = {
             "current_password": current_password,
             "new_password": new_password,
@@ -559,18 +565,17 @@ class APIClient:
     # Методы для работы с новостями
     def get_news(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список новостей"""
-        params = {}
         if show_hidden:
-            params["show_hidden"] = "true"
-        return self.get("/news", params=params)
+            return self.get("/admin/news", params={"show_hidden": "true"})
+        return self.get("/news")
 
     def get_news_by_id(self, news_id: int) -> dict[str, any]:
         """Получить новость по ID"""
-        return self.get_by_id("/news", news_id)
+        return self.get_by_id("/admin/news", news_id)
 
     def create_news(self, **data) -> dict[str, any]:
         """Создать новость"""
-        url = f"{settings.API_URL}/api/v1/news/"
+        url = self._build_url("/admin/news/")
         
         try:
             logger.debug(f"Attempting to create news with data: {data}")
@@ -625,7 +630,7 @@ class APIClient:
 
     def update_news(self, news_id: int, **data) -> dict[str, any]:
         """Обновить новость с возможностью обновления изображения"""
-        url = f"{settings.API_URL}/api/v1/news/{news_id}"
+        url = self._build_url(f"/admin/news/{news_id}")
         
         try:
             logger.debug(f"Attempting to update news {news_id} with data: {data}")
@@ -667,20 +672,20 @@ class APIClient:
 
     def delete_news(self, news_id: int) -> dict[str, any]:
         """Удалить новость"""
-        return self.delete(f"/news/{news_id}")
+        return self.delete(f"/admin/news/{news_id}")
 
     def toggle_news_visibility(self, news_id: int) -> dict[str, any]:
         """Переключить видимость новости"""
-        return self.post(f"/news/{news_id}/toggle-visibility")
+        return self.post(f"/admin/news/{news_id}/toggle-visibility")
 
     # Методы для работы с вопросами (обратная связь)
     def get_feedbacks(self) -> list[dict[str, any]]:
         """Получить список вопросов"""
-        return self.get("/feedback")
+        return self.get("/admin/feedback", params={"show_hidden": "true"})
 
     def get_feedback_by_id(self, feedback_id: int) -> dict[str, any]:
         """Получить вопрос по ID"""
-        return self.get_by_id("/feedback", feedback_id)
+        return self.get_by_id("/admin/feedback", feedback_id)
 
     def create_feedback(self, **data) -> dict[str, any]:
         """Создать вопрос"""
@@ -688,7 +693,7 @@ class APIClient:
 
     def respond_to_feedback(self, feedback_id: int, response_text: str) -> dict[str, any]:
         """Ответить на вопрос"""
-        url = f"{settings.API_URL}/api/v1/feedback/{feedback_id}/respond"
+        url = self._build_url(f"/admin/feedback/{feedback_id}/respond")
         data = {"response_text": response_text}
         try:
             response = self._make_authenticated_request(
@@ -702,32 +707,31 @@ class APIClient:
 
     def delete_feedback(self, feedback_id: int) -> dict[str, any]:
         """Удалить вопрос"""
-        return self.delete(f"/feedback/{feedback_id}")
+        return self.delete(f"/admin/feedback/{feedback_id}")
 
     # Методы для работы с отзывами
     def get_reviews(self, show_hidden: bool = False) -> list[dict[str, any]]:
         """Получить список отзывов"""
-        params = {}
         if show_hidden:
-            params["show_hidden"] = "true"
-        return self.get("/reviews", params=params)
+            return self.get("/admin/reviews", params={"show_hidden": "true"})
+        return self.get("/reviews")
 
     def get_review_by_id(self, review_id: int) -> dict[str, any]:
         """Получить отзыв по ID"""
-        return self.get_by_id("/reviews", review_id)
+        return self.get_by_id("/admin/reviews", review_id)
 
     def create_review(self, **data) -> dict[str, any]:
         """Создать отзыв"""
-        return self.post("/reviews", **data)
+        return self.post("/admin/reviews", **data)
 
     def update_review(self, review_id: int, **data) -> dict[str, any]:
         """Обновить отзыв (только переданные поля)"""
         update_data = {k: v for k, v in data.items() if v is not None}
-        return self.put(f"/reviews/{review_id}", **update_data)
+        return self.put(f"/admin/reviews/{review_id}", **update_data)
 
     def delete_review(self, review_id: int) -> dict[str, any]:
         """Удалить отзыв"""
-        return self.delete(f"/reviews/{review_id}")
+        return self.delete(f"/admin/reviews/{review_id}")
 
     # Методы для работы с пользователями
     def get_users(self) -> list[dict[str, any]]:
@@ -775,51 +779,12 @@ class APIClient:
         return self.post(f"/api/v1/reviews/{review_id}/reject")
 
     # Методы для работы с шаблонами расписаний
-    def upload_excel_schedule(self, file_path: str) -> dict[str, any]:
-        """Загрузить Excel файл и сгенерировать JSON шаблоны расписаний"""
-        url = f"{settings.API_URL}/api/v1/schedule/upload-excel"
+    def get_schedule_templates(self) -> dict[str, any]:
+        """Получить список шаблонов расписаний"""
+        url = self._build_url("/schedule/templates")
         
         try:
-            with open(file_path, 'rb') as f:
-                files = {'file': (file_path.split('/')[-1], f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-                
-                response = self._make_authenticated_request(
-                    'POST', url, files=files, timeout=self.timeout
-                )
-                
-                if response.status_code != 200:
-                    self._handle_error_response(response)
-                
-                return response.json()
-                
-        except Exception as e:
-            logger.error(f"Error uploading Excel schedule: {str(e)}")
-            raise APIError(f"Ошибка загрузки файла: {str(e)}")
-
-    def upload_schedule_excel(self, files: dict) -> dict[str, any]:
-        """Загрузить Excel файл через multipart/form-data"""
-        url = f"{settings.API_URL}/api/v1/schedule/upload-excel"
-        
-        try:
-            response = self._make_authenticated_request(
-                'POST', url, files=files, timeout=self.timeout
-            )
-            
-            if response.status_code != 200:
-                self._handle_error_response(response)
-            
-            return response.json()
-            
-        except Exception as e:
-            logger.error(f"Error uploading Excel schedule: {str(e)}")
-            raise APIError(f"Ошибка загрузки файла: {str(e)}")
-
-    def get_schedule_templates(self) -> list[dict[str, any]]:
-        """Получить список активных шаблонов расписаний"""
-        url = f"{settings.API_URL}/api/v1/schedule/templates"
-        
-        try:
-            response = self._make_authenticated_request('GET', url, timeout=self.timeout)
+            response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             
             if response.status_code != 200:
                 self._handle_error_response(response)
@@ -831,11 +796,11 @@ class APIClient:
             raise APIError(f"Ошибка получения шаблонов: {str(e)}")
 
     def get_schedule_template_by_college(self, college_name: str) -> dict[str, any]:
-        """Получить JSON данные расписания по названию колледжа"""
-        url = f"{settings.API_URL}/api/v1/schedule/templates/{college_name}"
+        """Получить шаблон расписания по названию колледжа"""
+        url = self._build_url(f"/schedule/templates/{college_name}")
         
         try:
-            response = self._make_authenticated_request('GET', url, timeout=self.timeout)
+            response = self._make_authenticated_request("GET", url, timeout=self.timeout)
             
             if response.status_code != 200:
                 self._handle_error_response(response)
@@ -843,7 +808,7 @@ class APIClient:
             return response.json()
             
         except Exception as e:
-            logger.error(f"Error getting schedule template: {str(e)}")
+            logger.error(f"Error getting schedule template for {college_name}: {str(e)}")
             raise APIError(f"Ошибка получения шаблона: {str(e)}")
 
     def delete_schedule_template(self, template_id: int) -> dict:
@@ -879,19 +844,291 @@ class APIClient:
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise APIError(f"Ошибка удаления шаблона: {str(e)}")
 
-    def delete_all_schedule_templates(self) -> dict[str, any]:
+    def delete_all_schedule_templates(self) -> dict:
         """Удалить все шаблоны расписаний"""
-        if not self.access_token:
-            raise AuthenticationError("Требуется аутентификация пользователя")
-
-        url = f"{settings.API_URL}/api/v1/schedule/templates"
+        url = self._build_url("/schedule/templates")
+        
         try:
             response = self._make_authenticated_request("DELETE", url, timeout=self.timeout)
+            
             if response.status_code != 200:
                 self._handle_error_response(response)
+            
             return response.json()
-        except RequestException as e:
-            raise APIError(f"Ошибка сети при удалении всех шаблонов: {str(e)}")
+            
+        except Exception as e:
+            logger.error(f"Error deleting all schedule templates: {str(e)}")
+            raise APIError(f"Ошибка удаления шаблонов: {str(e)}")
+
+    def upload_schedule_excel(self, files: dict) -> dict[str, any]:
+        """Загрузить Excel файл через multipart/form-data"""
+        url = self._build_url("/schedule/upload-excel")
+        
+        try:
+            response = self._make_authenticated_request(
+                'POST', url, files=files, timeout=self.timeout
+            )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error uploading Excel schedule: {str(e)}")
+            raise APIError(f"Ошибка загрузки файла: {str(e)}")
+
+    # Методы для работы с партнерами
+    def get_partners(self, show_hidden: bool = False) -> list[dict[str, any]]:
+        """Получить список партнеров"""
+        if show_hidden:
+            return self.get("/admin/partners", params={"show_hidden": "true"})
+        return self.get("/partners")
+
+    def get_partner(self, partner_id: int) -> dict[str, any]:
+        """Получить партнера по ID"""
+        return self.get_by_id("/admin/partners", partner_id)
+
+    def create_partner(self, **data) -> dict[str, any]:
+        """Создать партнера"""
+        url = f"{settings.API_URL}/api/v1/admin/partners/"
+        
+        try:
+            logger.debug(f"Attempting to create partner with data: {data}")
+            
+            # Подготавливаем данные для multipart/form-data
+            files = {}
+            form_data = {}
+            
+            # Обрабатываем изображение, если оно передано
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                    
+            # Все остальные данные
+            for key, value in data.items():
+                if value is not None:
+                    form_data[key] = str(value)
+            
+            # Копируем заголовки и удаляем Content-Type
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            # Если нет файлов, отправляем как обычные form-data
+            if not files:
+                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = self._make_authenticated_request(
+                    "POST", url, data=form_data, headers=headers, timeout=self.timeout
+                )
+            else:
+                response = self._make_authenticated_request(
+                    "POST", url, data=form_data, files=files, headers=headers, timeout=self.timeout
+                )
+            
+            if response.status_code not in [200, 201]:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error creating partner: {str(e)}")
+            raise APIError(f"Ошибка создания партнера: {str(e)}")
+
+    def update_partner(self, partner_id: int, **data) -> dict[str, any]:
+        """Обновить партнера"""
+        url = f"{settings.API_URL}/api/v1/admin/partners/{partner_id}"
+        
+        try:
+            logger.debug(f"Attempting to update partner {partner_id} with data: {data}")
+            
+            # Подготавливаем данные для multipart/form-data
+            files = {}
+            form_data = {}
+            
+            # Обрабатываем изображение, если оно передано
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                    
+            # Все остальные данные
+            for key, value in data.items():
+                if value is not None:
+                    form_data[key] = str(value)
+            
+            # Копируем заголовки и удаляем Content-Type
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            # Если нет файлов, отправляем как обычные form-data
+            if not files:
+                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = self._make_authenticated_request(
+                    "PUT", url, data=form_data, headers=headers, timeout=self.timeout
+                )
+            else:
+                response = self._make_authenticated_request(
+                    "PUT", url, data=form_data, files=files, headers=headers, timeout=self.timeout
+                )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error updating partner {partner_id}: {str(e)}")
+            raise APIError(f"Ошибка обновления партнера: {str(e)}")
+
+    def delete_partner(self, partner_id: int) -> dict[str, any]:
+        """Удалить партнера"""
+        return self.delete(f"/admin/partners/{partner_id}")
+
+    def toggle_partner_visibility(self, partner_id: int) -> dict[str, any]:
+        """Переключить видимость партнера"""
+        return self.post(f"/admin/partners/{partner_id}/toggle-visibility")
+
+    # Методы для работы с колледжами
+    def get_colleges(self) -> list[dict[str, any]]:
+        """Получить список колледжей"""
+        return self.get("/admin/colleges")
+
+    def get_college(self, college_id: int) -> dict[str, any]:
+        """Получить колледж по ID"""
+        return self.get_by_id("/admin/colleges", college_id)
+
+    def get_college_by_id(self, college_id: int) -> dict[str, any]:
+        """Получить колледж по ID (алиас для совместимости)"""
+        return self.get_by_id("/admin/colleges", college_id)
+
+    def create_college(self, **data) -> dict[str, any]:
+        """Создать колледж"""
+        url = f"{settings.API_URL}/api/v1/admin/colleges"
+        
+        try:
+            logger.debug(f"Attempting to create college with data: {data}")
+            
+            # Подготавливаем данные для multipart/form-data
+            files = {}
+            form_data = {}
+            
+            # Обрабатываем изображение, если оно передано
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                    
+            # Все остальные данные
+            for key, value in data.items():
+                if value is not None:
+                    form_data[key] = str(value)
+            
+            # Копируем заголовки и удаляем Content-Type
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            # Если нет файлов, отправляем как обычные form-data
+            if not files:
+                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = self._make_authenticated_request(
+                    "POST", url, data=form_data, headers=headers, timeout=self.timeout
+                )
+            else:
+                response = self._make_authenticated_request(
+                    "POST", url, data=form_data, files=files, headers=headers, timeout=self.timeout
+                )
+            
+            if response.status_code not in [200, 201]:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error creating college: {str(e)}")
+            raise APIError(f"Ошибка создания колледжа: {str(e)}")
+
+    def update_college(self, college_id: int, **data) -> dict[str, any]:
+        """Обновить колледж"""
+        url = f"{settings.API_URL}/api/v1/admin/colleges/{college_id}"
+        
+        try:
+            logger.debug(f"Attempting to update college {college_id} with data: {data}")
+            
+            # Подготавливаем данные для multipart/form-data
+            files = {}
+            form_data = {}
+            
+            # Обрабатываем изображение, если оно передано
+            if 'image' in data:
+                image_data = data.pop('image')
+                if image_data is not None:
+                    if hasattr(image_data, 'read'):
+                        content_type = getattr(image_data, 'content_type', 'image/jpeg')
+                        files['image'] = (getattr(image_data, 'filename', 'image.jpg'), image_data, content_type)
+                    elif isinstance(image_data, tuple) and len(image_data) == 2:
+                        files['image'] = (image_data[0], image_data[1], 'image/jpeg')
+                    elif isinstance(image_data, tuple) and len(image_data) == 3:
+                        files['image'] = image_data
+                    else:
+                        files['image'] = ('image.jpg', image_data, 'image/jpeg')
+                    
+            # Все остальные данные
+            for key, value in data.items():
+                if value is not None:
+                    form_data[key] = str(value)
+            
+            # Копируем заголовки и удаляем Content-Type
+            headers = self.headers.copy()
+            headers.pop('Content-Type', None)
+            
+            # Если нет файлов, отправляем как обычные form-data
+            if not files:
+                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = self._make_authenticated_request(
+                    "PUT", url, data=form_data, headers=headers, timeout=self.timeout
+                )
+            else:
+                response = self._make_authenticated_request(
+                    "PUT", url, data=form_data, files=files, headers=headers, timeout=self.timeout
+                )
+            
+            if response.status_code != 200:
+                self._handle_error_response(response)
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Error updating college {college_id}: {str(e)}")
+            raise APIError(f"Ошибка обновления колледжа: {str(e)}")
+
+    def delete_college(self, college_id: int) -> dict[str, any]:
+        """Удалить колледж"""
+        return self.delete(f"/admin/colleges/{college_id}")
 
 
 api_client = APIClient(settings.API_URL)

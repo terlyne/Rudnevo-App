@@ -1,0 +1,183 @@
+{% extends "panel/base.html" %}
+
+{% block title %}
+Руднево - Партнеры
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/panel/partners/partners_list.css') }}">
+<style>
+    .btn-remove-image {
+        background: #f44336;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-size: 15px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.2s;
+        display: inline-block;
+    }
+
+    .btn-remove-image:hover {
+        background: #c62828;
+    }
+</style>
+{% endblock %}
+
+{% block container %}
+<div class="partners-container">
+    <div class="partners-header">
+        <div class="header-content">
+            <h1>Партнеры</h1>
+        </div>
+        <button class="btn-create" onclick="createPartner()">
+            <span class="btn-icon">+</span>
+            Создать партнера
+        </button>
+    </div>
+
+    <div class="partners-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🤝</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ partners|length }}</div>
+                    <div class="stat-label">Всего партнеров</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ partners|selectattr('is_active', 'equalto', True)|list|length }}</div>
+                    <div class="stat-label">Активных</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔒</div>
+                <div class="stat-content">
+                    <div class="stat-number">{{ partners|selectattr('is_active', 'equalto', False)|list|length }}</div>
+                    <div class="stat-label">Скрытых</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="partners-list">
+        {% for partner in partners %}
+        <div class="partner-card {% if not partner.is_active %}hidden{% endif %}">
+            <div class="partner-image">
+                {% if partner.image_url %}
+                <img src="{{ url_for('panel.partner_image', partner_id=partner.id) }}" alt="Изображение партнера">
+                {% else %}
+                <div class="no-image">
+                    <span>🤝</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="partner-content">
+                <div class="partner-header-info">
+                    <h3 class="partner-name">
+                        <span>
+                            {% if partner.name and partner.name|length > 50 %}
+                            {{ partner.name[:50] }}...
+                            {% else %}
+                            {{ partner.name }}
+                            {% endif %}
+                        </span>
+                    </h3>
+                    <div class="partner-status">
+                        {% if partner.is_active %}
+                        <span class="status-visible">Активен</span>
+                        {% else %}
+                        <span class="status-hidden">Скрыт</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="partner-meta">
+                    <span class="partner-date">{{ partner.created_at }}</span>
+                    <div class="partner-actions">
+                        <button type="button" class="btn-edit" onclick="return editPartner({{ partner.id }})">
+                            <span class="btn-icon">✏️</span>
+                            Редактировать
+                        </button>
+                        <form method="POST" action="{{ url_for('panel.partner_toggle_visibility', partner_id=partner.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-toggle"
+                                onclick="return confirm('Вы уверены, что хотите изменить видимость партнера?')">
+                                <span class="btn-icon">👁️</span>
+                                {% if partner.is_active %}Скрыть{% else %}Показать{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('panel.partner_delete', partner_id=partner.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                            <button type="submit" class="btn-delete"
+                                onclick="return confirm('Вы уверены, что хотите удалить этого партнера? Это действие нельзя отменить.')">
+                                <span class="btn-icon">🗑️</span>
+                                Удалить
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not partners %}
+        <div class="no-partners">
+            <div class="no-partners-icon">🤝</div>
+            <div class="no-partners-text">Партнеров пока нет</div>
+            <div class="no-partners-subtext">Создайте первого партнера, нажав кнопку "Создать партнера"</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для создания/редактирования партнера -->
+<div id="partnerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Создать партнера</h2>
+            <span class="close" onclick="closePartnerModal()">&times;</span>
+        </div>
+        <form id="partnerForm" method="POST" action="{{ url_for('panel.partner_create') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <div class="form-group">
+                <label for="name">Название организации партнера *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="image">Изображение</label>
+                <div id="imageBlock">
+                    <img id="imagePreview" src="" alt="Превью изображения"
+                        style="display:none;max-width:100%;margin-top:10px;" />
+                    <button type="button" id="removeImageBtn" style="display:none;margin-top:10px;"
+                        class="btn-remove-image">Удалить изображение</button>
+                    <input type="file" id="image" name="image" accept="image/*" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="is_active" name="is_active" checked>
+                    Активен
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closePartnerModal()">Отмена</button>
+                <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/panel/partners/partners_list.js') }}"></script>
+{% endblock %} 

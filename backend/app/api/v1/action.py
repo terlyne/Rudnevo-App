@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user
-from app.crud import action as action_crud
-from app.db.session import get_async_session
-from app.models.user import User
-from app.schemas.action import ActionCreate, ActionResponse
+from api.deps import get_current_active_user
+from crud import action as action_crud
+from db.session import get_async_session
+from models.user import User
+from schemas.action import ActionCreate, ActionResponse
 
 
 router = APIRouter()

@@ -3,11 +3,11 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.security import TokenData, verify_token
-from app.db.session import get_async_session
-from app.models.user import User
-from app.crud.user import get_user_by_username
+from core.config import settings
+from core.security import TokenData, verify_token
+from db.session import get_async_session
+from models.user import User
+from crud.user import get_user_by_username
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -35,6 +35,23 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
+    return user
+
+
+async def get_current_user_optional(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_session)
+) -> User | None:
+    """Получить текущего пользователя (опционально, возвращает None если не авторизован)"""
+    try:
+        payload = verify_token(token, "access")
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        token_data = TokenData(username=username)
+    except ValueError:
+        return None
+
+    user = await get_user_by_username(db, username=token_data.username)
     return user
 
 

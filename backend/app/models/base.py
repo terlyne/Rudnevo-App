@@ -4,7 +4,7 @@ from sqlalchemy.orm import (
     Mapped,
 )
 
-from app.db.custom_types import int_pk
+from db.custom_types import int_pk
 
 
 class Base(DeclarativeBase):

@@ -4,14 +4,14 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 
-from app.api.deps import get_current_admin_or_superuser
-from app.crud import schedule as schedule_crud
-from app.db.session import get_async_session
-from app.models.user import User
-from app.schemas.schedule import (
+from api.deps import get_current_admin_or_superuser
+from crud import schedule as schedule_crud
+from db.session import get_async_session
+from models.user import User
+from schemas.schedule import (
     ScheduleTemplateCreate, ScheduleTemplateInDB, ScheduleUploadResponse
 )
-from app.utils.schedule_generator import process_excel_schedule, validate_schedule_data
+from utils.schedule_generator import process_excel_schedule, validate_schedule_data
 
 import logging
 
@@ -47,13 +47,14 @@ async def upload_excel_schedule(
             f.write(content)
         
         # Обрабатываем файл и получаем JSON данные
-        processed_data = process_excel_schedule(file_path)
+        processed_data = await process_excel_schedule(file_path, db)
         
         # Сохраняем шаблоны в базу данных
         templates_to_create = []
         for item in processed_data:
-            if validate_schedule_data(item["schedule_data"]):
+            if validate_schedule_data(item["schedule_data"]) and item.get("college_id"):
                 template_data = ScheduleTemplateCreate(
+                    college_id=item["college_id"],
                     college_name=item["college_name"],
                     schedule_data=item["schedule_data"],
                     is_active=True
@@ -62,9 +63,10 @@ async def upload_excel_schedule(
         
         # Деактивируем старые шаблоны для этих колледжей
         for item in processed_data:
-            await schedule_crud.deactivate_schedule_templates_by_college(
-                db, college_name=item["college_name"]
-            )
+            if item.get("college_id"):
+                await schedule_crud.deactivate_schedule_templates_by_college_id(
+                    db, college_id=item["college_id"]
+                )
         
         # Создаем новые шаблоны
         created_templates = await schedule_crud.create_schedule_templates_multi(
@@ -89,6 +91,9 @@ async def upload_excel_schedule(
         )
     
     except Exception as e:
+        import traceback
+        print('!!! ОШИБКА ПРИ СОХРАНЕНИИ РАСПИСАНИЯ:', repr(e))
+        print(traceback.format_exc())
         # Удаляем временный файл в случае ошибки
         if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
@@ -176,13 +181,13 @@ async def get_schedule_templates(
     return templates
 
 
-@router.get("/templates/{college_name}")
+@router.get("/templates/{college_id}")
 async def get_schedule_template_by_college(
-    college_name: str, db: AsyncSession = Depends(get_async_session)
+    college_id: int, db: AsyncSession = Depends(get_async_session)
 ):
-    """Получить готовый HTML шаблон расписания по названию колледжа (открытый эндпоинт)"""
-    template = await schedule_crud.get_schedule_template_by_college_name(
-        db, college_name=college_name
+    """Получить готовый HTML шаблон расписания по college_id (открытый эндпоинт)"""
+    template = await schedule_crud.get_schedule_template_by_college_id(
+        db, college_id=college_id
     )
     if not template or not template.is_active:
         raise HTTPException(
@@ -191,11 +196,10 @@ async def get_schedule_template_by_college(
         )
     
     schedule_data = template.schedule_data
-    # schedule это список записей расписания
     schedule = schedule_data.get("schedule", [])
     
     # Отладочная информация
-    logger.info(f"=== SCHEDULE DEBUG FOR {college_name} ===")
+    logger.info(f"=== SCHEDULE DEBUG FOR {college_id} ===")
     logger.info(f"Schedule data type: {type(schedule_data)}")
     logger.info(f"Schedule type: {type(schedule)}")
     logger.info(f"Schedule length: {len(schedule) if isinstance(schedule, list) else 'Not a list'}")

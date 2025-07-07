@@ -2,13 +2,13 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user
-from app.core.security import verify_password
-from app.crud import user as user_crud
-from app.db.session import get_async_session
-from app.models.user import User
-from app.schemas.password import PasswordChange, PasswordReset, PasswordResetConfirm
-from app.utils.email import send_reset_password_email
+from api.deps import get_current_active_user
+from core.security import verify_password
+from crud import user as user_crud
+from db.session import get_async_session
+from models.user import User
+from schemas.password import PasswordChange, PasswordReset, PasswordResetConfirm
+from utils.email import send_reset_password_email
 
 router = APIRouter()
 

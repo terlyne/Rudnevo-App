@@ -1,7 +1,7 @@
 from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify
 import logging
 
-from app.api.client import api_client, AuthenticationError, ValidationError, APIError
+from api.client import api_client, AuthenticationError, ValidationError, APIError
 
 
 # Настраиваем логирование
